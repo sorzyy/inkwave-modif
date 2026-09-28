@@ -1,0 +1,42 @@
+{
+  "name": "inkwave",
+  "version": "1.0.0",
+  "description": "An original Splatoon-style 4v4 turf-war shooter for the browser, built on three.js.",
+  "scripts": {
+    "start": "python3 tools/serve.py 8490",
+    "relay": "cd server && wrangler dev --ip 0.0.0.0 --port 8787",
+    "check": "for f in $(find src tools server/src -name '*.js' -o -name '*.mjs'); do node --check \"$f\" || exit 1; done && echo 'syntax ok'",
+    "smoke": "./tools/smoke.sh",
+    "net-test": "node tools/net-test.mjs",
+    "build": "python3 tools/build-dist.py",
+    "release": "./tools/release-pages.sh",
+    "deploy-relay": "cd server && wrangler deploy"
+  },
+  "keywords": [
+    "game",
+    "three.js",
+    "webgl",
+    "shooter",
+    "splatoon",
+    "turf-war",
+    "browser-game"
+  ],
+  "author": "Jayden Davis",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "three": "^0.186.0"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.12.0",
+    "wrangler": "^4.141.0"
+  },
+  "homepage": "https://inkwave-aah.pages.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jaydendavisnc/inkwave.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jaydendavisnc/inkwave/issues"
+  }
+}
