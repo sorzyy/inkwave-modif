@@ -629,8 +629,46 @@ function buildSplatling() {
   };
 }
 
+// ---------------------------------------------------------------------------------------------- launcher
+// "Breaker Launcher": a fat launch tube over a pistol grip, flared exhaust bell at the back, a boxy sight on top, a
+// vertical foregrip for the left hand and a team-ink warhead ('warhead') nosing out of the front — it vanishes when
+// the rocket leaves and slides back in as the reload finishes.
+function buildLauncher() {
+  const P = new Parts(), I = new Parts(), T = new Parts(), WH = new Parts();
+  pistolGrip(P, { T });
+  const TY = 0.098, TR = 0.05;
+  // launch tube: cream shell with dark end rings, team band near the front
+  P.add(at(latheZ([[0, -0.2], [TR - 0.004, -0.2], [TR, -0.194], [TR, 0.33], [TR - 0.004, 0.336], [0, 0.336]], 22), 0, TY, 0), C.cream, M.gloss);
+  for (const z of [-0.19, 0.06, 0.322]) P.add(at(torus(TR + 0.003, 0.0055, 5, 22), 0, TY, z), C.dark, M.satin);
+  I.add(at(latheZ([[TR + 0.001, 0.25], [TR + 0.004, 0.254], [TR + 0.004, 0.296], [TR + 0.001, 0.3]], 22), 0, TY, 0));
+  // dark bore at the muzzle and the exhaust bell at the back
+  P.add(at(latheZ([[0, 0.3], [TR - 0.008, 0.3], [TR - 0.008, 0.337], [0, 0.337]], 18), 0, TY, 0.001), C.darker, M.satin);
+  P.add(at(latheZ(smoothProfile([[TR - 0.002, -0.19], [TR + 0.004, -0.215], [TR + 0.016, -0.245], [TR + 0.024, -0.262]], 6).concat([[TR + 0.02, -0.268], [TR - 0.006, -0.24], [0, -0.235]]), 20), 0, TY, 0), C.dark, M.gloss);
+  // saddle joining the tube to the grip frame
+  P.add(at(superEllipsoid(0.02, 0.028, 0.07, 0.45, 0.6, 10, 6), 0, 0.045, 0.02), C.dark, M.satin);
+  // sight box on the left of the tube top + its lens
+  P.add(at(superEllipsoid(0.013, 0.016, 0.03, 0.35, 0.5, 8, 6), 0.018, TY + TR + 0.014, 0.04), C.darker, M.satin);
+  P.add(at(superEllipsoid(0.008, 0.008, 0.0015, 1, 1, 10, 4), 0.018, TY + TR + 0.016, 0.071), C.lens, M.lens);
+  // squid decal + screws on the side
+  const sq = decal(squidShape(0.034)); placeXY(sq, new V3(0, 0, -1), new V3(0, 1, 0), new V3(TR + 0.0005, TY, -0.06)); P.add(sq, C.decal, M.print);
+  for (const sx of [1, -1]) for (const z of [-0.12, 0.14]) screw(P, new V3(sx * (TR + 0.0005), TY - 0.02, z), new V3(sx, 0, 0), 0.003);
+  // vertical foregrip for the left hand
+  const fg = superEllipsoid(0.0118, 0.032, 0.0132, 0.55, 0.65, 10, 8); fg.rotateX(-0.1); P.add(at(fg, 0, 0.022, 0.17), C.darker, M.satin);
+  P.add(at(superEllipsoid(0.0124, 0.02, 0.0095, 0.5, 0.55, 8, 6).rotateX(-0.1), 0, 0.018, 0.169), C.rubber, M.rubber);
+  // ink warhead: rounded nose cone just proud of the muzzle
+  WH.add(at(latheZ(smoothProfile([[TR - 0.012, 0.3], [TR - 0.011, 0.34], [TR - 0.018, 0.37], [0.018, 0.39], [0.0, 0.398]], 8), 18), 0, TY, 0));
+  return {
+    kind: 'launcher', body: P.build(), ink: I.build(),
+    parts: { trigger: part(T, TRIGGER_PIVOT), warhead: part(WH, new V3(0, TY, 0.33), 'ink') },
+    muzzle: new V3(0, TY, 0.4),
+    gripR: GRIP_PISTOL,
+    gripL: { pos: new V3(0, 0.024, 0.17), handZ: new V3(0, 1, -0.1), handY: new V3(0.45, -0.05, -1) },
+    twirl: new V3(0, 0.05, 0.04),
+  };
+}
+
 const _cache = new Map();
-const BUILDERS = { shooter: buildShooter, roller: buildRoller, charger: buildCharger, blaster: buildBlaster, dualies: buildDualies, slosher: buildSlosher, splatling: buildSplatling };
+const BUILDERS = { shooter: buildShooter, roller: buildRoller, charger: buildCharger, blaster: buildBlaster, dualies: buildDualies, slosher: buildSlosher, splatling: buildSplatling, launcher: buildLauncher };
 export const WEAPON_KINDS = Object.keys(BUILDERS);
 
 /** Hand bone frame (wrist origin) expressed in weapon space, from a grip spec and that hand's grip-hole offset. */
@@ -713,7 +751,7 @@ export function animateWeapon(w, st) {
   const shotK = pulseE(ts, 0.006, 30);
   if (P.trigger) {
     const want = kind === 'charger' ? ((st.charge || 0) > 0.01 ? 1 : 0) : kind === 'splatling' ? (R ? (R.charging || R.streaming ? 1 : 0) : (st.firing ? 1 : 0))
-      : kind === 'blaster' || kind === 'dualies' ? (ts < 0.07 ? 1 : 0) : (st.firing && u < 0.16 ? 1 : 0);
+      : kind === 'blaster' || kind === 'dualies' || kind === 'launcher' ? (ts < 0.07 ? 1 : 0) : (st.firing && u < 0.16 ? 1 : 0);
     w.trig = dampE(w.trig, want, want > w.trig ? 45 : 22, dt);
     P.trigger.rotation.x = 0.42 * w.trig;
   }
@@ -775,6 +813,12 @@ export function animateWeapon(w, st) {
     const rip = 1 + 0.02 * Math.sin(t * 11 + 1.3) * (0.3 + drain);
     s.scale.set(rip * (1 - 0.1 * drain), 1, (2 - rip) * (1 - 0.1 * drain));
     P.lever.rotation.x = -0.4 * (u < 0.3 ? 1 - mjE(Math.max(0, u - 0.18) / 0.12) : 0);
+  } else if (kind === 'launcher') {
+    // warhead: gone the moment the rocket leaves, slides back in and seats with a small overshoot as the reload ends
+    const k = u < 0.85 ? 0 : u < 1.25 ? mjE((u - 0.85) / 0.4) : 1;
+    const seat = u >= 1.25 && u < 1.45 ? 0.06 * Math.sin(Math.PI * (u - 1.25) / 0.2) : 0;
+    P.warhead.scale.setScalar(Math.max(0.001, k + seat));
+    P.warhead.position.z = P.warhead.userData.rest.z - 0.06 * (1 - k);
   } else if (kind === 'splatling') {
     // barrel cluster: spins up with the charge, screams while it streams, spins down with inertia
     let want = 0;

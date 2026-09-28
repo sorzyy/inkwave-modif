@@ -1540,11 +1540,35 @@ def('boss_sunk', {
   },
 });
 
+// Launcher: a deep tube thoomp, the rocket motor catching with a rising whoosh and a hissing tail; the reload is a
+// sliding warhead + a heavy latch clunk (weapons.js schedules it so it lands as the warhead seats).
+def('shoot_launcher', {
+  gain: 0.6, max: 3, jitter: 0.04, reverb: 0.18,
+  build(v, p) {
+    v.tone({ f: 120 * p, f1: 32 * p, sw: 0.22, a: 0.002, d: 0.42, peak: 1 });                           // tube thoomp
+    v.nz({ kind: 'pink', ft: 'lowpass', f: 1300, f1: 220, sw: 0.18, q: 2, a: 0.002, d: 0.2, peak: 0.95 });
+    v.nz({ ft: 'highpass', f: 3200, a: 0.0004, d: 0.012, peak: 0.55 });                                  // ignition crack
+    v.nz({ t: 0.03, f: 500 * p, f1: 2600 * p, sw: 0.35, q: 1.3, a: 0.05, d: 0.35, peak: 0.45 });         // motor whoosh
+    v.nz({ t: 0.06, ft: 'highpass', f: 4200, a: 0.06, d: 0.5, peak: 0.16 });                             // exhaust hiss
+    v.tone({ t: 0.02, f: 210 * p, f1: 520 * p, sw: 0.12, a: 0.004, d: 0.1, peak: 0.28 });               // wet gloop
+  },
+});
+def('launcher_reload', {
+  gain: 0.55, max: 3, jitter: 0.03, reverb: 0.06,
+  build(v, p) {
+    v.nz({ f: 900 * p, f1: 1900 * p, sw: 0.14, q: 1.2, a: 0.03, d: 0.12, peak: 0.14 });                // warhead slides in
+    v.nz({ t: 0.17, f: 2600 * p, q: 2.2, a: 0.0003, d: 0.012, peak: 0.75 });                             // latch click
+    v.tone({ t: 0.17, f: 190 * p, f1: 95 * p, sw: 0.03, a: 0.001, d: 0.06, peak: 0.6 });                // heavy clunk
+    v.tone({ t: 0.17, f: 1650 * p, a: 0.0005, d: 0.05, peak: 0.1 });
+  },
+});
+
 /* ------------------------------------------------------------------------------------------------------------ */
 export const SFX_GROUPS = {
   UI: ['ui_hover', 'ui_click', 'ui_back', 'ui_confirm', 'ui_toggle', 'ui_slider', 'ui_error'],
   Weapons: ['shoot_shooter', 'shoot_blaster', 'blaster_pump', 'blaster_boom', 'charger_charge', 'charger_full', 'shoot_charger', 'roller_flick', 'roll',
-    'shoot_dualies', 'dualies_roll', 'slosh_throw', 'slosh_land', 'splatling_spin', 'splatling_ready', 'shoot_splatling', 'splatling_wind'],
+    'shoot_dualies', 'dualies_roll', 'slosh_throw', 'slosh_land', 'splatling_spin', 'splatling_ready', 'shoot_splatling', 'splatling_wind',
+    'shoot_launcher', 'launcher_reload'],
   Ink: ['splat_small', 'splat_big', 'ink_hit_wall', 'bomb_throw', 'bomb_beep', 'bomb_explode'],
   Squid: ['squid_in', 'squid_out', 'swim', 'swim_splash', 'jump', 'land', 'climb', 'step_dry', 'step_ink', 'step_enemy', 'ink_drip'],
   World: ['gull', 'harbor_ambience', 'ferry_horn', 'halyard_clink'],

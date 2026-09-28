@@ -163,8 +163,24 @@ export const WEAPONS = {
     moveSpeedCharging: 2.4, moveSpeedFiring: 3.4,
     special: 'storm', specialCost: 195,
   },
+  // Ink bazooka: the longest projectile reach and the biggest blast in the game, paid for with a slow reload, a heavy
+  // ink bill (7 rockets a tank), a crawl while firing / reloading and a rocket slow enough to sidestep at range.
+  // A direct hit splats; blasts need two within ~1 m or three further out (52 dmg at 1 m, 38 at 2 m, 25 at
+  // 2.9 m). Inside armDist the warhead hasn't armed: a weak dud (40), no blast.
+  launcher: {
+    id: 'launcher', name: 'Breaker Launcher', kind: 'launcher', class: 'Launcher', sub: 'bomb',
+    blurb: 'Fires slow ink rockets that burst on contact. Huge splash, slow reload — and point-blank shots are duds.',
+    stats: { range: 0.85, damage: 0.85, rate: 0.15, mobility: 0.35, paint: 0.8 },
+    fireInterval: 1.35, inkPerShot: 14, projSpeed: 19, range: 17,
+    directDamage: 100, splashDamageMax: 70, splashDamageMin: 25, splashRadius: 3.0,
+    armDist: 3.0, dudDamage: 40,
+    impactRadius: 2.1, burstRadius: 2.6, trailEvery: 2.4, trailRadius: 0.5,
+    spread: 0.8, spreadAir: 5,
+    moveSpeedFiring: 3.0, moveSpeedReload: 3.8,
+    special: 'slam', specialCost: 200,
+  },
 };
-export const WEAPON_ORDER = ['shooter', 'dualies', 'splatling', 'roller', 'slosher', 'charger', 'blaster'];
+export const WEAPON_ORDER = ['shooter', 'dualies', 'splatling', 'roller', 'slosher', 'charger', 'blaster', 'launcher'];
 
 export const SUB = {
   bomb: {

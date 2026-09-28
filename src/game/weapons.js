@@ -1,5 +1,6 @@
-// Weapons: per-actor WeaponRunner (fire logic for shooter/roller/charger/blaster + bomb sub) and the global
-// Projectiles system (ink shots, blaster blobs, roller drops, bombs, storm clouds, charger beams, bomb arc preview).
+// Weapons: per-actor WeaponRunner (fire logic for shooter/roller/charger/blaster/launcher + bomb sub) and the global
+// Projectiles system (ink shots, blaster blobs, launcher rockets, roller drops, bombs, storm clouds, charger beams,
+// bomb arc preview).
 //
 // Accuracy: every shot leaves the muzzle aimed at the crosshair's world point and shooter shots get a
 // ballistic launch-pitch correction (same integrator as the flight) so, inside the weapon's range, they land on the
@@ -61,6 +62,7 @@ export class WeaponRunner {
     if (this.flickRecover > 0) return lerp(PLAYER.runSpeed, w.moveSpeedFiring * 0.6, this.flickRecover / 0.18);
     if (this.charging) return lerp(PLAYER.runSpeed * 0.7, w.moveSpeedFiring, Math.min(1, this.charge * 3));
     if (this.firingT > 0) return w.moveSpeedFiring;
+    if (w.kind === 'launcher' && this.cooldown > 0) return w.moveSpeedReload;   // hauling the reload
     return PLAYER.runSpeed;
   }
 
@@ -72,7 +74,7 @@ export class WeaponRunner {
       const base = a.grounded ? w.spreadGround : w.spreadAir;
       return base * lerp(w.spreadFirst ?? 0.45, 1, this.bloom);
     }
-    if (w.kind === 'blaster') return a.grounded ? (w.spread ?? 1.2) : (w.spreadAir ?? 4);
+    if (w.kind === 'blaster' || w.kind === 'launcher') return a.grounded ? (w.spread ?? 1.2) : (w.spreadAir ?? 4);
     return 0;
   }
 
@@ -86,7 +88,7 @@ export class WeaponRunner {
     this.spread = this._spreadDeg(w);
     this.sinceHand[0] += dt; this.sinceHand[1] += dt;
     switch (w.kind) {
-      case 'shooter': case 'blaster': this._auto(dt, inp, w); break;
+      case 'shooter': case 'blaster': case 'launcher': this._auto(dt, inp, w); break;
       case 'charger': this._charger(dt, inp, w); break;
       case 'roller': this._roller(dt, inp, w); break;
       case 'dualies': this._dualies(dt, inp, w); break;
@@ -132,6 +134,7 @@ export class WeaponRunner {
       a.lastFire = 0;
       this.spread = this._spreadDeg(w);
       if (w.kind === 'shooter') G.projectiles.fireShooter(a, w, this.spread);
+      else if (w.kind === 'launcher') G.projectiles.fireLauncher(a, w, this.spread);
       else G.projectiles.fireBlaster(a, w, this.spread);
       this.bloom = Math.min(1, this.bloom + (w.bloomPerShot ?? 0.3));
       a.character.trigger('shoot');
@@ -635,6 +638,7 @@ export class Projectiles {
       case 'blaster': if (near) { G.audio?.play('shoot_blaster', { pos: m, volume: 0.5 }); G.audio?.play('blaster_pump', { pos: m, volume: 0.4, delay: 0.27 }); } break;
       case 'slosher': if (near) G.fx?.muzzle(m, dir, a.color, 'blaster'); break;
       case 'charger': this._ghostBeam(a, m, dir, e.len || 20, e.charge || 0.5, near); break;
+      case 'launcher': if (near) { G.audio?.play('shoot_launcher', { pos: m, volume: 0.6 }); G.audio?.play('launcher_reload', { pos: m, volume: 0.35, delay: w.fireInterval - 0.45 }); } break;
     }
   }
 
@@ -892,6 +896,39 @@ export class Projectiles {
     rumble(a, 0.28, 0.4, 95);
   }
 
+  // Launcher rocket: a big, slow, dead-straight round (a 'blast' — same flight, hit and burst path as the blaster's,
+  // tuned by WEAPONS[wid]) that bursts on whatever it touches or at the end of its range. It trails a line of ink.
+  fireLauncher(a, w, spreadDeg) {
+    const m = this._muzzle(a, _v.set(0, 0, 0));
+    const dir = this._aimFrom(a, m, _dir);
+    this._spread(dir, spreadDeg ?? 0.8);
+    const p = this._new();
+    Object.assign(p, { type: 'blast', wid: w.id, owner: a, team: a.team, age: 0, life: w.range / w.projSpeed, straight: 99, radius: w.impactRadius, damage: w.directDamage, size: 0.24, trail: -1.2, trailEvery: w.trailEvery, trailRadius: w.trailRadius, grav: 0, drag: 0, seed: Math.random(),
+      vis: 0.25, tail0: 1.6, tailK: 1.4, wob: 0.04, wobF: 12, nose: 0.45, sats: 4 });
+    p.pos.copy(m); p.prev.copy(m); p.start.copy(m);
+    p.vel.copy(dir).multiplyScalar(w.projSpeed);
+    this._push(p);
+    if (a.isLocal || a._nearCamera()) {
+      G.audio?.play('shoot_launcher', { pos: a.isLocal ? undefined : m, volume: a.isLocal ? 0.85 : 0.6 });
+      G.audio?.play('launcher_reload', { pos: a.isLocal ? undefined : m, volume: a.isLocal ? 0.5 : 0.35, delay: w.fireInterval - 0.45 });
+    }
+    if (a.isLocal) emit('recoil', { amount: 0.022 });
+    emit('weapon:fire', { actor: a, weapon: w.id, muzzle: m.clone(), dir: dir.clone() });
+    rumble(a, 0.4, 0.5, 140);
+  }
+
+  // A launcher rocket arms only after armDist of flight: before that it's a dud (weak direct hit, no blast).
+  _armed(p, at) {
+    const w = WEAPONS[p.wid];
+    return !w || !w.armDist || p.start.distanceTo(at) >= w.armDist;
+  }
+  // direct-hit damage for a round connecting at `at`
+  _directDamage(p, at) {
+    if (p.type === 'drop') return lerp(p.damage, p.dmgFar, clamp(p.start.distanceTo(at) / 7, 0, 1));
+    if (p.type === 'blast' && !this._armed(p, at)) return WEAPONS[p.wid].dudDamage ?? p.damage * 0.4;
+    return p.damage;
+  }
+
   fireFlick(a, w) {
     const m = _v.copy(a.pos); m.y += 1.0;
     const fx = Math.sin(a.yaw), fz = Math.cos(a.yaw);
@@ -1145,8 +1182,7 @@ export class Projectiles {
         // generous hitbox: the whole visible body plus the blob's own radius
         if (_res.dist < PLAYER.radius * 0.95 + p.size) {
           _v.copy(p.prev).lerp(p.pos, _res.t);
-          let dmg = p.damage;
-          if (p.type === 'drop') dmg = lerp(p.damage, p.dmgFar, clamp(p.start.distanceTo(_v) / 7, 0, 1));
+          let dmg = this._directDamage(p, _v);
           if (p.vol) { if (p.vol.hits.includes(e)) dmg = 0; else p.vol.hits.push(e); }
           if (dmg > 0) this.applyHit(p.owner, e, dmg, p.wid || p.type);
           G.fx?.burst(_v, _v2.copy(p.vel).normalize().negate(), p.owner.color, { count: 6, speed: 3, size: 0.07 });
@@ -1191,8 +1227,7 @@ export class Projectiles {
   _bossImpact(p, bh) {
     const at = (this._bossAt || (this._bossAt = new THREE.Vector3())).copy(bh.point), target = bh.target;
     const key = target.hp !== undefined && target.id !== undefined ? target : G.boss;   // one hit per volley per body
-    let dmg = p.damage;
-    if (p.type === 'drop') dmg = lerp(p.damage, p.dmgFar, clamp(p.start.distanceTo(at) / 7, 0, 1));
+    let dmg = this._directDamage(p, at);
     if (p.vol) { if (p.vol.hits.includes(key)) dmg = 0; else p.vol.hits.push(key); }
     // a roller flick is one sheet of ink: against a body this size every drop would land, so only the first counts
     // in full and the rest chip
@@ -1207,7 +1242,7 @@ export class Projectiles {
   _impact(p, hit) {
     _v.copy(hit.point).addScaledVector(hit.normal, 0.14);
     _dir.copy(p.vel).normalize();
-    const rad = p.radius * (0.85 + Math.random() * 0.3);
+    const rad = p.radius * (0.85 + Math.random() * 0.3) * (p.type === 'blast' && !this._armed(p, hit.point) ? 0.35 : 1);
     let area;
     if (p.type === 'slosh') {
       // the wave lands as a thick stripe along its travel: stretched along the horizontal heading
@@ -1226,10 +1261,19 @@ export class Projectiles {
   }
 
   _blastBurst(p, at, direct) {
-    const w = WEAPONS.blaster;
+    const w = WEAPONS[p.wid] || WEAPONS.blaster;
     const c = at.clone();
+    if (!this._armed(p, c)) {   // launcher dud: a wet pop, a small splat, no blast
+      G.fx?.burst(c, UP, p.owner.color, { count: 10, speed: 3.5, size: 0.08 });
+      G.audio?.play('splat_big', { pos: c, volume: 0.5, pitch: 1.2 });
+      const g = G.physics.raycast(_v2.copy(c).setY(c.y + 0.2), DOWN, 3.5, _hit2);
+      if (g.hit) p.owner.addTurf(G.paint.splat(_v3.copy(g.point).addScaledVector(g.normal, 0.1), w.impactRadius * 0.4, p.team, { seed: Math.random() }));
+      return;
+    }
+    const rocket = w.kind === 'launcher';
     G.fx?.explosion(c, p.owner.color, w.burstRadius);
-    G.audio?.play('blaster_boom', { pos: c, volume: 0.7 });
+    G.audio?.play('blaster_boom', { pos: c, volume: rocket ? 0.95 : 0.7, pitch: rocket ? 0.72 : 1 });
+    if (rocket) emit('shake', { pos: c.clone(), amount: 0.4 });
     emit('weapon:impact', { pos: c.clone(), normal: new THREE.Vector3(0, 1, 0), team: p.team, kind: 'blast', radius: w.burstRadius });
     // paint under the burst
     const g = G.physics.raycast(_v2.copy(c).setY(c.y + 0.2), DOWN, 3.5, _hit2);
@@ -1240,9 +1284,9 @@ export class Projectiles {
       const d = _v.distanceTo(c);
       if (d > w.splashRadius) continue;
       if (!G.physics.los(c, _v)) continue;
-      this.applyHit(p.owner, e, lerp(w.splashDamageMax, w.splashDamageMin, d / w.splashRadius), 'blaster');
+      this.applyHit(p.owner, e, lerp(w.splashDamageMax, w.splashDamageMin, d / w.splashRadius), w.id);
     }
-    if (direct !== 'boss') G.boss?.splash(p.owner, c, w.splashRadius, w.splashDamageMax, w.splashDamageMin, 'blaster');
+    if (direct !== 'boss') G.boss?.splash(p.owner, c, w.splashRadius, w.splashDamageMax, w.splashDamageMin, w.id);
   }
 
   _updateBombs(dt) {

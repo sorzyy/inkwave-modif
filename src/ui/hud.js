@@ -810,6 +810,11 @@ export class HUD {
         <g class="iw-ret__notch"><path d="M0 -31 L0 -36"/><path d="M31 0 L36 0"/><path d="M0 31 L0 36"/><path d="M-31 0 L-36 0"/></g></svg>`;
       this._chargeC = C;
       this._chargeEl = r.querySelector('.iw-ret__charge');
+    } else if (kind === 'launcher') {
+      // rocket sight: range brackets + a wide blast-radius ring around a small centre ring
+      r.innerHTML = `<i class="iw-ret__dot"></i><svg class="iw-ret__svg" viewBox="-40 -40 80 80" aria-hidden="true">
+        <circle r="27" class="iw-ret__ring thin" pathLength="100" style="stroke-dasharray:8 4.5"/><circle r="8" class="iw-ret__ring"/>
+        <path class="iw-ret__ring" d="M-17 -12 L-17 -17 L-12 -17 M12 -17 L17 -17 L17 -12 M17 12 L17 17 L12 17 M-12 17 L-17 17 L-17 12"/></svg>`;
     } else if (kind === 'blaster') {
       r.innerHTML = `<i class="iw-ret__dot"></i><svg class="iw-ret__svg" viewBox="-40 -40 80 80" aria-hidden="true">
         <circle r="23" class="iw-ret__ring" pathLength="100" style="stroke-dasharray:19 6;stroke-dashoffset:9.5"/><circle r="9" class="iw-ret__ring thin"/></svg>`;
@@ -860,9 +865,10 @@ export class HUD {
     this._bloom = Math.max(0, this._bloom - dt * 5);
     this._kick = Math.max(0, (this._kick || 0) - dt * 16);   // per-shot reticle kick (~60 ms), on top of the live spread
     const ch = f.crosshair || {};
-    if (L.kind === 'shooter' || L.kind === 'blaster' || L.kind === 'dualies' || L.kind === 'splatling') {
-      const kk = L.kind === 'blaster' ? 0 : this._kick * this._kick * (L.kind === 'splatling' ? 4 : 7);
-      const sp = clamp((+ch.spread || 0) + this._bloom * (L.kind === 'blaster' ? 5 : 2.5) + kk, 0, 90);
+    if (L.kind === 'shooter' || L.kind === 'blaster' || L.kind === 'launcher' || L.kind === 'dualies' || L.kind === 'splatling') {
+      const heavy = L.kind === 'blaster' || L.kind === 'launcher';
+      const kk = heavy ? 0 : this._kick * this._kick * (L.kind === 'splatling' ? 4 : 7);
+      const sp = clamp((+ch.spread || 0) + this._bloom * (heavy ? 5 : 2.5) + kk, 0, 90);
       if (L.spread == null || Math.abs(sp - L.spread) > 0.25) { L.spread = sp; this.ret.style.setProperty('--sp', sp.toFixed(1)); }
     } else {
       const b = this._bloom;

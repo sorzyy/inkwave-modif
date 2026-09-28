@@ -25,7 +25,7 @@ const UP = new THREE.Vector3(0, 1, 0), DOWN = new THREE.Vector3(0, -1, 0), ZAX =
 const TAU = Math.PI * 2;
 const rand = Math.random;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
-const FIRE_KEY = { shooter: 'fire:shooter', blaster: 'fire:blaster', charger: 'fire:charger', roller: 'fire:roller' };
+const FIRE_KEY = { shooter: 'fire:shooter', blaster: 'fire:blaster', launcher: 'fire:blaster', charger: 'fire:charger', roller: 'fire:roller' };
 const IMPACT_KEY = { shot: 'impact:shot', blast: 'impact:blast', drop: 'impact:drop', charger: 'impact:charger', roll: 'impact:roll' };
 
 class FxHooks {
@@ -239,7 +239,7 @@ class FxHooks {
     const a = e.actor; if (!a || !e.muzzle) return;
     const kind = (e.weapon && (e.weapon.kind || e.weapon)) || a.weapon?.kind;
     const dir = e.dir || a.aimDir;
-    if (kind === 'blaster') this.fx.muzzle?.(e.muzzle, dir, a.color, 'blaster');
+    if (kind === 'blaster' || kind === 'launcher') this.fx.muzzle?.(e.muzzle, dir, a.color, 'blaster');
     else if (kind === 'charger') this.fx.muzzle?.(e.muzzle, dir, a.color, 'charger');
     else if (kind === 'roller') this._flick(a);
     this._bump(FIRE_KEY[kind] || 'fire:other');

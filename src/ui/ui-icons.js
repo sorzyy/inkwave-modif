@@ -98,6 +98,18 @@ export const WEAPON_ICONS = {
     <path d="M41 30 L60 30 M41 34 L60 34" stroke="${LT}" stroke-width="1.6"/>
     <circle cx="21" cy="15" r="4.2" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="2.2"/>
     <path d="M11 29.5 L33 29.5" stroke="#fff" stroke-opacity=".6" stroke-width="2.6" stroke-linecap="round"/>`),
+  // ink bazooka: long launch tube with a flared rear exhaust, sight box on top, grip + foregrip, ink warhead nosing out
+  launcher: svg(`<g ${O}>
+      <path d="M20 36 L17 51.5 Q16.6 54 19 54 L24 54 Q26 54 26.5 52 L29 37 Z" fill="${DK}"/>
+      <path d="M38 36 L37 45 Q37 47.5 39.5 47.5 L42 47.5 Q44 47.5 44 45.5 L44.5 36 Z" fill="${DK}"/>
+      <path d="M3 21.5 L9 24.5 L9 35.5 L3 38.5 Z" fill="${DK}"/>
+      <rect x="8" y="23" width="44" height="14" rx="4" fill="${LT}"/>
+      <rect x="22" y="14" width="11" height="9" rx="2" fill="${DK}"/>
+      <path d="M51 24.5 Q63 24.5 62 30 Q63 35.5 51 35.5 Z" fill="currentColor"/>
+      <rect x="12" y="23" width="4.5" height="14" rx="1.5" fill="currentColor"/>
+    </g>
+    <path d="M13 27.5 L46 27.5" stroke="#fff" stroke-opacity=".6" stroke-width="2.6" stroke-linecap="round"/>
+    <circle cx="27.5" cy="18.5" r="2.2" fill="currentColor"/>`),
 };
 
 export const SUB_ICONS = {

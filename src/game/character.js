@@ -312,6 +312,18 @@ HOLD.splatling = {
   raise: { p: [-0.17, 1.2, 0.1], r: [-1.0, 0.3, -0.3] },
   lobby: { p: [-0.15, 0.8, 0.2], r: [0.25, 0.4, -0.15] }, lobbyTwo: 1,
 };
+// launcher: carried like the splatling (two hands, tube across the body), the heaviest kick in the arsenal
+HOLD.launcher = {
+  fire: 'recoil',
+  carry: { p: [-0.15, 0.76, 0.16], r: [0.4, 0.22, -0.08] }, twoCarry: 1,
+  aim: { p: [-0.06, -0.12, 0.18], r: [0.02, 0.06, 0] }, twoAim: 1,
+  poleR: [-0.85, -0.55, -0.2], poleL: [0.75, -0.7, -0.2],
+  rc: { kick: 0.5, back: 0.1, hz: 3.0, z: 0.66, jit: 0.02, torso: 0.46, head: 0.32, crouch: 0.035, brace: 0.5 },
+  hip: -0.22, chest: 0.1, crouch: 0.028,
+  stance: [0.125, 0.07, 0.24, -0.115, -0.07, -0.42],
+  raise: { p: [-0.17, 1.2, 0.1], r: [-1.0, 0.3, -0.3] },
+  lobby: { p: [-0.15, 0.8, 0.2], r: [0.25, 0.4, -0.15] }, lobbyTwo: 1,
+};
 HOLD.shooter.fire = 'recoil'; HOLD.blaster.fire = 'pump'; HOLD.charger.fire = 'charge'; HOLD.roller.fire = 'flick';
 const STANCE_IDLE = [HIPW + 0.012, 0.014, 0.19, -HIPW - 0.008, -0.01, -0.2];   // ready stance: a bit wide, toes out, left foot a touch ahead
 const STANCE_LOCK = [0.165, 0.035, 0.42, -0.165, -0.035, -0.42];   // dualies' post-roll turret: wide and planted

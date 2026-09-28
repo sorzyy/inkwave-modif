@@ -136,7 +136,7 @@ export class BotBrain {
       wantPitch = idealPitch + e * 0.6 * (0.75 * wander(this.t * 2.1 + this.ph2) + 1.6 * acq * this.acqSignP);
       if (this.mode === 'fight') {
         // movement in combat: keep preferred distance + eased strafing (+ swim in to close distance)
-        const pref = w.kind === 'charger' ? range * 0.8 : w.kind === 'roller' ? 0.5 : range * 0.7;
+        const pref = w.kind === 'charger' ? range * 0.8 : w.kind === 'roller' ? 0.5 : w.kind === 'launcher' ? range * 0.6 : range * 0.7;
         if (this.strafeT <= 0) { this.strafeT = 0.6 + Math.random() * 1.2; this.strafe = Math.random() < 0.5 ? -1 : 1; this.strafeAmp = 0.5 + Math.random() * 0.5; }
         this.strafeS += (this.strafe * this.strafeAmp - this.strafeS) * (1 - Math.exp(-5 * dt));
         const nx = dx / Math.max(dist, 0.01), nz = dz / Math.max(dist, 0.01);
@@ -165,6 +165,8 @@ export class BotBrain {
             if (wr.charging) move.multiplyScalar(0.45);
           } else if (w.kind === 'slosher') {
             it.fire = dist < range * 1.05;   // the lob also reaches targets up on ledges / behind low cover
+          } else if (w.kind === 'launcher') {
+            it.fire = dist > w.armDist + 0.5 && dist < range;   // point-blank rockets are duds: back off first
           } else {
             it.fire = dist < range * 1.08;
           }
@@ -201,7 +203,7 @@ export class BotBrain {
       this.sweep += dt * (w.kind === 'charger' ? 0.8 : 2.1);
       const sweepAmt = w.kind === 'roller' ? 0 : 0.55;
       wantYaw += Math.sin(this.sweep) * sweepAmt;
-      wantPitch = w.kind === 'charger' ? -0.12 : w.kind === 'blaster' ? -0.28 : w.kind === 'slosher' ? -0.16 : w.kind === 'splatling' ? -0.3 : -0.42;
+      wantPitch = w.kind === 'charger' ? -0.12 : w.kind === 'blaster' || w.kind === 'launcher' ? -0.22 : w.kind === 'slosher' ? -0.16 : w.kind === 'splatling' ? -0.3 : -0.42;
       const aheadStats = G.paint.regionStats(a.pos.x + Math.sin(wantYaw) * 4, a.pos.y, a.pos.z + Math.cos(wantYaw) * 4, 3, a.team, _stats);
       const needPaint = aheadStats.n === 0 || aheadStats.own < 0.75;
       if (w.kind === 'roller') {
@@ -595,7 +597,7 @@ export class BotBrain {
       const st = G.paint.regionStats(a.pos.x + Math.sin(aheadYaw) * 3, a.pos.y, a.pos.z + Math.cos(aheadYaw) * 3, 2.5, a.team, _stats);
       if (a.groundTeam === 2 || (st.n && st.enemy > 0.2)) {
         this.sweep += dt * 2.1;
-        if (this.mode !== 'fight') { wantYaw = aheadYaw + (w.kind === 'roller' ? 0 : Math.sin(this.sweep) * 0.5); wantPitch = w.kind === 'charger' ? -0.12 : w.kind === 'blaster' ? -0.28 : -0.42; }
+        if (this.mode !== 'fight') { wantYaw = aheadYaw + (w.kind === 'roller' ? 0 : Math.sin(this.sweep) * 0.5); wantPitch = w.kind === 'charger' ? -0.12 : w.kind === 'blaster' || w.kind === 'launcher' ? -0.22 : -0.42; }
         it.fire = w.kind === 'roller' ? wantMove : w.kind !== 'charger' && w.kind !== 'splatling' ? true : !a.weaponRunner.charging || a.weaponRunner.charge < 0.6;
       }
     }
