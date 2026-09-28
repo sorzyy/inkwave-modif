@@ -101,6 +101,7 @@ const MENU_DESC = {
   online: 'Private rooms for up to 8 friends — create one or join with a room code',
   loadout: 'Choose your weapon: stats, sub and special for every kind',
   locker: 'Choose your squidkid — tentacles, headgear, eyes, skin and outfit',
+  armory: 'Battle pass, weapon cases and skins — open cases, equip your favourite finishes',
   settings: 'Controls, video, audio and gameplay options',
   howto: 'The rules in 30 seconds, plus every control',
   credits: 'The squidkids and code behind INKWAVE',
@@ -129,6 +130,7 @@ const SETTINGS_TABS = [
     { key: 'sfx', label: 'Sound effects', type: 'slider', min: 0, max: 1, step: 0.05, fmt: pctFmt, help: 'Weapons, splats, voices and menu sounds.' },
   ] },
   { id: 'gameplay', label: 'Gameplay', icon: 'swords', rows: [
+    { key: 'firstPerson', label: 'First-person view', type: 'toggle', help: 'Play from your squidkid\u2019s eyes. Press V during a match to switch views any time.' },
     { key: 'cameraShake', label: 'Camera shake', type: 'slider', min: 0, max: 1, step: 0.05, fmt: pctFmt, help: 'Screen shake from explosions, slams and hits.' },
     { key: 'rumble', label: 'Vibration', type: 'slider', min: 0, max: 1, step: 0.05, fmt: pctFmt, help: 'Controller rumble for hits, splats, bombs and specials. Only while you play with a controller.' },
     { key: 'colorblind', label: 'Colorblind-safe inks', type: 'toggle', help: 'Always use high-contrast yellow vs. blue team inks.' },
@@ -825,11 +827,13 @@ export class Menus {
         badge: h('span', { class: 'iw-btn__live' }, h('i'), 'LIVE') },
       { id: 'loadout', label: 'LOADOUT', icon: weaponIcon(W.kind || lo.weapon), cls: 'iw-btn--menu', accept: () => this._go('loadout') },
       { id: 'locker', label: 'LOCKER', icon: GLYPHS.hanger, cls: 'iw-btn--menu', accept: () => this._go('locker') },
+      { id: 'armory', label: 'ARMORY', icon: GLYPHS.star, cls: 'iw-btn--menu iw-btn--armory', accept: () => this.api.openArmory?.(), sound: 'ui_confirm',
+        badge: (this.api.armoryBadge?.() || 0) > 0 ? h('span', { class: 'iw-btn__live' }, h('i'), `${this.api.armoryBadge()} NEW`) : null },
       { id: 'settings', label: 'SETTINGS', icon: GLYPHS.gear, cls: 'iw-btn--menu', accept: () => this._go('settings') },
       { id: 'howto', label: 'HOW TO PLAY', icon: GLYPHS.question, cls: 'iw-btn--menu', accept: () => this._go('howto') },
       { id: 'credits', label: 'CREDITS', icon: GLYPHS.star, cls: 'iw-btn--menu', accept: () => this._go('credits') },
     ];
-    const tilts = [-2.2, 1.3, 1.4, -1.1, 1.6, -1.3, 1.1];
+    const tilts = [-2.2, 1.3, 1.4, -1.1, 1.2, 1.6, -1.3, 1.1];
     const btns = items.map((it, i) => { const b = this._btn({ ...it, tilt: tilts[i % tilts.length] }); b.classList.add('iw-in', 'iw-in--left'); return b; });
     const descText = h('span', { class: 'iw-main__desctext' });
     const desc = h('div', { class: 'iw-main__desc iw-in iw-in--left' }, h('i', { class: 'iw-main__descdot' }), descText);

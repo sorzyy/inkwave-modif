@@ -34,6 +34,7 @@ import { TIERS, T_HERO, T_GAME, T_FAR, LOD_QUALITY, KID_H, FADE_S, pickTier, dit
 // ------------------------------------------------------------------------------------------------
 // (the catalog lives in character-style.js — owned by the appearance stream; re-exported here for older importers)
 import * as STYLE from './character-style.js';
+import { skinMaterialFor, SKIN_TIME } from './skins.js';
 const { SKIN_TONES, OUTFITS, IRIS, HAIR_STYLES, resolveStyle } = STYLE;
 export { SKIN_TONES, OUTFITS, IRIS, HAIR_STYLES };
 
@@ -694,6 +695,21 @@ export class Character {
     return w;
   }
 
+  _shellMat(kind) { return skinMaterialFor(this.style, kind) || getPlasticMaterial(); }
+
+  /** Equipped weapon skins changed (locker / Armory): { [weaponId]: { id, w } } — re-dress every built weapon. */
+  setWeaponSkins(wskins) {
+    this.style = { ...this.style, wskins: { ...(wskins || {}) } };
+    for (const k in this.weapons) {
+      for (let x = this.weapons[k]; x; x = x.left) {
+        const m = this._shellMat(x.def.kind);
+        x.body.material = m; x.bodyFar.material = m;
+        for (const g of x.partList) if (g.userData.mat !== 'ink' && g.userData.mat !== 'lamp') g.userData.mesh.material = m;
+        if (x.drum) x.drum.children[1].material = m;
+      }
+    }
+  }
+
   /** One held weapon: pivot at the fist's grip axis (twirls spin about the handle) → off = weapon space. */
   _weaponInstance(d, left) {
     const hole = left ? GRIP_HOLE_L : FIST_OFFSET, inHand = left ? d.inHandL : d.inHand;
@@ -703,16 +719,17 @@ export class Character {
     pivot.add(off);
     // two LODs: near = static shell + animated parts (trigger, bolts, pump, gauge, lamps…); far = the complete weapon
     // merged at rest (2 draws, like before) — toggled by camera distance in _animWeapon
-    const body = new THREE.Mesh(d.bodyStatic || d.body, getPlasticMaterial()); body.castShadow = true;
+    const shell = this._shellMat(d.kind);   // stock plastic, or the equipped weapon skin (skins.js)
+    const body = new THREE.Mesh(d.bodyStatic || d.body, shell); body.castShadow = true;
     const ink = new THREE.Mesh(d.inkStatic || d.ink, getInkMaterial(this.color)); ink.castShadow = true;
-    const bodyFar = new THREE.Mesh(d.body, getPlasticMaterial()); bodyFar.castShadow = true; bodyFar.visible = false;
+    const bodyFar = new THREE.Mesh(d.body, shell); bodyFar.castShadow = true; bodyFar.visible = false;
     const inkFar = new THREE.Mesh(d.ink, getInkMaterial(this.color)); inkFar.castShadow = true; inkFar.visible = false;
     off.add(body, ink, bodyFar, inkFar);
     const parts = {}, partList = [], lamps = [];
     for (const k in d.parts || {}) {
       const pd = d.parts[k];
       const g = new THREE.Group(); g.position.copy(pd.pivot);
-      const mat = pd.mat === 'ink' ? getInkMaterial(this.color) : pd.mat === 'lamp' ? makeLampMaterial(pd.lamp) : getPlasticMaterial();
+      const mat = pd.mat === 'ink' ? getInkMaterial(this.color) : pd.mat === 'lamp' ? makeLampMaterial(pd.lamp) : shell;
       const m = new THREE.Mesh(pd.geo, mat); m.onBeforeRender = partGate;
       g.add(m); off.add(g);
       g.userData = { mesh: m, rest: pd.pivot, mat: pd.mat };
@@ -724,7 +741,7 @@ export class Character {
     if (d.drum) {
       drum = new THREE.Group(); drum.position.copy(d.drumAt);
       const dm = new THREE.Mesh(d.drum, getInkMaterial(this.color)); dm.castShadow = true;
-      const dc = new THREE.Mesh(d.drumCaps, getPlasticMaterial());
+      const dc = new THREE.Mesh(d.drumCaps, shell);
       drum.add(dm, dc); off.add(drum); drum.userData.ink = dm;
     }
     const muzzle = new THREE.Object3D(); muzzle.position.copy(d.muzzle); off.add(muzzle);
@@ -1954,6 +1971,7 @@ export class Character {
   // Moving weapon parts are driven by animateWeapon(w, st) (character-weapons.js) runs once per held
   // instance per frame with one reused state object. Near/far LOD by camera distance (far = merged static weapon).
   _animWeapon(dt, s, w) {
+    SKIN_TIME.value = performance.now() / 1000;   // animated skin finishes (one shared clock)
     let near = true;
     if (this.inWorld && !this.isLocal && G.camera) near = G.camera.position.distanceToSquared(this.root.position) < 15 * 15;
     // a far-tier kid holds the merged weapon, decimated like the body (a 4–6k-tri gun on a 60 px kid is all waste)
@@ -1974,6 +1992,13 @@ export class Character {
     if (w.left) {
       st.hand = 1; st.sinceShoot = this.tr[T_SHOOTL];
       animateWeapon(w.left, st);
+    }
+    // first-person viewmodel (viewmodel.js): a second instance of this weapon, always at full detail
+    const vm = this.vm;
+    if (vm) {
+      st.hand = 0; st.sinceShoot = this.tr[T_SHOOT]; st.near = true;
+      animateWeapon(vm, st);
+      if (vm.left) { st.hand = 1; st.sinceShoot = this.tr[T_SHOOTL]; animateWeapon(vm.left, st); }
     }
   }
 

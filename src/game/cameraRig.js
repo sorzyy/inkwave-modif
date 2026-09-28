@@ -71,6 +71,8 @@ export class CameraRig {
     this.dipS = { x: 0, v: 0 };  // landing dip (lightly under-damped, sub-stepped)
     this.side = new Spring(0);    // strafe look-ahead (metres along camera right)
     this.lensLift = new Spring(0); // eased clearance over surfaces just under the lens
+    // first person (settings.firstPerson, V in a match): fpK blends the lens from the boom into the eyes
+    this.fpK = 0; this.eyeH = new Spring(1.3);
     this.wantDist = 4.5;
     this._lastTY = null;
     this._landSeen = 99;
@@ -405,6 +407,18 @@ export class CameraRig {
     _v2.copy(this.pivot).addScaledVector(fwd, 10);
     _v2.y += 0.15;
     if (this.shoulder > 1e-3) _v2.addScaledVector(_right, this.shoulder);   // parallel shift: aim direction unchanged
+    // ---- first person: the lens slides into the eyes (never during a super jump / special, which want the wide view)
+    const fpWant = G.settings?.firstPerson && !flying && !special ? 1 : 0;
+    this.fpK = fpWant > this.fpK ? Math.min(1, this.fpK + dt / 0.28) : Math.max(0, this.fpK - dt / 0.28);
+    if (this.fpK > 1e-4) {
+      const eh = this.eyeH.step(swim ? 0.32 : squid ? 0.5 : 1.3, 16, dt);
+      const e = easeInOut(this.fpK);
+      _v.set(p.x, this.sy.x - h + eh + dip * 0.5, p.z);          // eye: visual feet + eye height (the vertical spring keeps jumps smooth)
+      cam.position.lerp(_v, e);
+      _v.addScaledVector(fwd, 10);
+      _v2.lerp(_v, e);
+      this.fovKick *= 1 - 0.5 * e;                                // swim FOV punch is plenty from the eyes
+    } else this.eyeH.reset(squid ? 0.5 : 1.3);
     cam.up.set(0, 1, 0);
     cam.lookAt(_v2);
     if (Math.abs(this.kick) > 1e-6) cam.rotateX(this.kick);

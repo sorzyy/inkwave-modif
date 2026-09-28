@@ -37,6 +37,8 @@
 - **Ink that behaves like liquid.** Splats spread and settle, fresh ink is glossy and dries, drips run down walls, and swimming leaves a wake in the surface itself.
 - **A map you can actually read.** Hold <kbd>Tab</kbd> and the camera cranes up into a tilt-shift diorama of the live stage, with pins for your team and one-click Super Jumps.
 - **Locker.** Choose your squidkid: tentacle style, headgear, face, outfit.
+- **Armory.** A 50-tier battle pass filled by the XP of every match, weapon cases with a CS-style opening reel (Mil-Spec to ★ Exceedingly Rare, wear from Factory New to Battle-Scarred, StatTrak™), and 60+ weapon skins — animated lava, holographic, galaxy, neon circuit, Doppler — that show in every match, offline and online. Coins are earned by playing; there is no real money anywhere.
+- **First-person view.** Press <kbd>V</kbd> in a match (or turn it on in Settings → Gameplay) to play from your squidkid's eyes, weapon and skin in view.
 - **Everything procedural.** Characters, animation, weapons, textures, props, sound effects and music are all generated in code. There are no downloaded assets except two fonts.
 
 <p align="center">
@@ -56,6 +58,7 @@
 | Sub weapon (bomb) | Right click / <kbd>E</kbd> | RB |
 | Special | <kbd>F</kbd> | Y |
 | Map + Super Jump | Hold <kbd>Tab</kbd> or <kbd>M</kbd>, then <kbd>1</kbd>–<kbd>4</kbd> or click a pin | View |
+| First / third person | <kbd>V</kbd> | — |
 | Pause | <kbd>Esc</kbd> | Start |
 
 Gamepads work on the hosted (https) version. On a plain `http://` LAN address browsers block the Gamepad API.

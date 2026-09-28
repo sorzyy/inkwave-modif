@@ -272,6 +272,7 @@ export const DEFAULT_SETTINGS = {
   rumble: 1.0,              // gamepad vibration 0..1 (only while the pad is the last-used device)
   aimAssist: 1.0,           // gamepad aim assist 0..1
   aimAssistMouse: false,    // optional aim assist for mouse
+  firstPerson: false,       // first-person camera (V toggles it in a match)
 };
 
 // Quality presets consumed by the renderer + fx.

@@ -24,6 +24,8 @@ import { Match } from './game/match.js';
 import { Minimap } from './game/minimap.js';
 import { Showcase } from './game/showcase.js';
 import { BOSS_MODE } from './boss/bossMode.js';
+import { Viewmodel } from './game/viewmodel.js';
+import { armoryOf, syncStyle, grantMatchRewards, equippedItem, passTier } from './game/skins.js';
 
 const params = new URLSearchParams(location.search);
 // dev-only: ?devstage lets an online-only stage (config onlineOnly — Cargo Terminal) boot as the backdrop and be walked
@@ -54,6 +56,7 @@ class Game {
     // v1.1: fov became horizontal — migrate old vertical values once
     if (this.settings.fovMode !== 'h') { this.settings.fov = DEFAULT_SETTINGS.fov; this.settings.fovMode = 'h'; saveJSON('inkwave.settings', this.settings); }
     this.profile = loadJSON('inkwave.profile', DEFAULT_PROFILE);
+    armoryOf(this.profile); syncStyle(this.profile);   // Armory state (coins, pass, skins) + equipped skins → the look
     const app = document.getElementById('app');
     this.uiRoot = document.getElementById('ui-root');
     this.fadeEl = document.getElementById('fade');
@@ -62,6 +65,17 @@ class Game {
     const [menusMod, hudMod] = await Promise.all([loadModule('./ui/menus.js'), loadModule('./ui/hud.js')]);
     this.menus = G.menus = menusMod.Menus ? new menusMod.Menus(this.uiRoot, this._menuApi()) : null;
     this.hud = G.hud = hudMod.HUD ? new hudMod.HUD(this.uiRoot, { playSound: (n, o) => G.audio?.play(n, o) }) : null;
+    // Armory (battle pass · cases · skins): a full-screen overlay above the menus
+    try {
+      const { Armory } = await import('./ui/armory.js');
+      this.armory = new Armory(document.body, {
+        getProfile: () => this.profile,
+        saveProfile: () => saveJSON('inkwave.profile', this.profile),
+        playSound: (n) => { G.audio?.init?.(); G.audio?.play(n); },
+        onClose: () => { if (this.menus?.current === 'main') this.menus.show('main', { force: true, light: false }); },
+        onEquip: () => { if (this.menus?.current === 'loadout') this.showcase.showLoadout(this.profile.weapon || 'shooter', G.teamColors[0], this.profile.style); },
+      });
+    } catch (e) { console.error('[inkwave] armory', e); this.armory = null; }
     // map diorama pins/finish live inside the HUD layer (under every other HUD element)
     try { const { DioramaOverlay } = await import('./ui/diorama.js'); this.diorama = new DioramaOverlay(this.hud ? this.hud.el : this.uiRoot); } catch (e) { console.error('[inkwave] diorama', e); this.diorama = null; }
     this.hud?.setVisible(false);
@@ -118,6 +132,7 @@ class Game {
     G.renderer.toneMappingExposure = 0.94;
     await progress(0.55, 'Teaching squids to swim…');
     G.projectiles = new Projectiles(scene);
+    this.viewmodel = new Viewmodel(scene);
     G.fx = new fxMod.FX(scene, { quality: q });
     G.fx.setLighting?.(G.env.getSkyColors?.());
     this._applyNight();
@@ -329,7 +344,7 @@ class Game {
       },
       setProfileName: (n) => { self.profile.name = String(n || 'Player').slice(0, 16); saveJSON('inkwave.profile', self.profile); },
       // locker look ({ hair, skin, outfit, eyes, hat, brows, … } — indices into character-style.js tables)
-      setProfileStyle: (st) => { self.profile.style = { ...(st || {}) }; saveJSON('inkwave.profile', self.profile); },
+      setProfileStyle: (st) => { self.profile.style = { ...(st || {}) }; syncStyle(self.profile); saveJSON('inkwave.profile', self.profile); },   // (keeps the equipped weapon skins)
       getLoadout: () => ({ weapon: self.profile.weapon || 'shooter' }),
       setLoadout: ({ weapon }) => {
         if (!WEAPONS[weapon]) return;
@@ -345,6 +360,8 @@ class Game {
       toMainMenu: () => self.quitToMenu(),
       onScreenChange: (s) => self._onScreen(s),
       playSound: (n) => { G.audio?.init?.(); G.audio?.play(n); },
+      openArmory: (tab) => self.armory?.open(tab),
+      armoryBadge: () => { const A = armoryOf(self.profile); let n = 0; for (const k in A.cases) n += A.cases[k] || 0; for (let i = 1; i <= passTier(A); i++) if (!A.claimed.includes(i)) n++; return n; },
     });
     return api;
   }
@@ -376,8 +393,14 @@ class Game {
     if (!this._audioOn) { this._audioOn = true; G.audio?.init?.(); this._applyAudioVolumes(); this._playMusic(this.menus?.current === 'title' || !this.menus ? 'title' : 'menu'); }
     if (G.mode === 'match' && this.match && !this.match.paused && !this.menus?.current) {
       if (e.code === 'Escape' || e.code === 'KeyP') { this.pause(); return true; }
+      if (e.code === 'KeyV') {   // first / third person
+        this._setSettings({ firstPerson: !this.settings.firstPerson });
+        this.hud?.feed?.({ text: this.settings.firstPerson ? 'First-person view (V)' : 'Third-person view (V)', kind: 'info' });
+        return true;
+      }
       return false;
     }
+    if (this.armory?.isOpen) return this.armory.handleKey(e);
     if (this.menus && this.menus.current) return this.menus.handleKey(e) || false;
     return false;
   }
@@ -406,6 +429,7 @@ class Game {
     on('hit', ({ attacker, victim, damage, killed }) => {
       if (!this.match || this.match.attract) return;
       if (attacker?.isLocal) {
+        if (killed) { const it = equippedItem(this.profile, attacker.weaponId); if (it && it.st >= 0) it.st++; }   // StatTrak™
         this.hud?.hitMarker(killed ? 'kill' : 'hit');
         if (G.time - lastHitSnd > 0.06) { lastHitSnd = G.time; G.audio?.play('hit_marker', { volume: 0.6 }); }
       }
@@ -791,6 +815,7 @@ class Game {
     const before = { level: p.level, xp: p.xp, toNext: PROGRESSION.xpForLevel(p.level) };
     p.xp += gained; p.matches++; if (won) p.wins++; p.totalTurf += turf;
     while (p.xp >= PROGRESSION.xpForLevel(p.level)) { p.xp -= PROGRESSION.xpForLevel(p.level); p.level++; }
+    this._passRewards(p, gained, won);
     saveJSON('inkwave.profile', p);
     const data = {
       mode: 'boss', win: won, percents: [cov[0] * 100, cov[1] * 100], colors: [G.teamHex[0], G.teamHex[1]], teamNames: this.palette.names || TEAM_NAMES,
@@ -807,6 +832,15 @@ class Game {
     this.menus?.show('results');
     G.audio?.play(won ? 'victory_fanfare' : 'defeat_jingle');
     if (G.netm && G.net.isHost) this._netEndT = setTimeout(() => { G.netm?.sendEnd(); this.netMatchEnd(); }, 12000);
+  }
+
+  // battle pass XP + coins for the match just played (the Armory shows what they unlock)
+  _passRewards(p, gained, won) {
+    const r = grantMatchRewards(p, gained, won);
+    setTimeout(() => {
+      this.menus?.toast?.(`+${r.passXp.toLocaleString('en-US')} PASS XP  ·  +${r.coins} COINS`, { kind: 'good', ms: 5200 });
+      if (r.tiersGained > 0) this.menus?.toast?.(`BATTLE PASS: ${r.tiersGained} new tier${r.tiersGained > 1 ? 's' : ''} — claim in the Armory!`, { kind: 'info', ms: 6500 });
+    }, 1800);
   }
 
   async _judge() {
@@ -830,6 +864,7 @@ class Game {
     const before = { level: p.level, xp: p.xp, toNext: PROGRESSION.xpForLevel(p.level) };
     p.xp += gained; p.matches++; if (won) p.wins++; p.totalTurf += turf;
     while (p.xp >= PROGRESSION.xpForLevel(p.level)) { p.xp -= PROGRESSION.xpForLevel(p.level); p.level++; }
+    this._passRewards(p, gained, won);
     saveJSON('inkwave.profile', p);
     const data = {
       win: won, percents: [cov[0] * 100, cov[1] * 100], colors: [G.teamHex[0], G.teamHex[1]], teamNames: this.palette.names || TEAM_NAMES,
@@ -920,6 +955,7 @@ class Game {
     // map diorama: held map key during live play (or while waiting to respawn) swoops the view overhead
     this.rig.setMap?.(!!(m && !m.attract && !m.paused && m.state === 'playing' && m.controller?.mapHeld && !this.menus?.current));
     this.rig.update(dt);
+    this.viewmodel.update(dt, this.rig, G.camera, m && !m.attract ? m.local : null, !!(m && !m.attract && m.state !== 'results'));
     this._dioFog();
     this.diorama?.update(dt, this.rig.mapK);
     // local player camera-dependent aim must use this frame's camera
@@ -934,7 +970,7 @@ class Game {
     // see-through window toward the local player
     {
       const lu = this.levelMat.userData.uniforms;
-      const on = !!(m && !m.attract && loc && loc.alive && this.rig.mode === 'follow' && this.rig.target === loc && this.rig.mapK < 0.3);
+      const on = !!(m && !m.attract && loc && loc.alive && this.rig.mode === 'follow' && this.rig.target === loc && this.rig.mapK < 0.3 && this.rig.fpK < 0.5);
       lu.uSeeOn.value = damp(lu.uSeeOn.value, on ? 1 : 0, 10, dt);
       lu.uSeeA.value.copy(G.camera.position);
       if (loc) lu.uSeeB.value.set(loc.pos.x, loc.pos.y + (loc.form === 'squid' ? 0.4 : 1.0), loc.pos.z);
@@ -1037,6 +1073,7 @@ class Game {
     const inp = this.input;
     if (!inp.pad) return;
     const pp = inp.padPressed;
+    if (this.armory?.isOpen) { if (pp.has(1)) this.armory.close(); return; }
     if (this.menus?.current) {
       const nav = (d) => this.menus.nav?.(d);
       if (pp.has(12)) nav('up'); if (pp.has(13)) nav('down'); if (pp.has(14)) nav('left'); if (pp.has(15)) nav('right');
