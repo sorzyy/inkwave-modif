@@ -87,6 +87,7 @@ const BOSS_DIFF_INFO = {
   hard: 'Tougher shell, harder hits, relentless pace. Bring the whole squad.',
 };
 const BOSS_DURATIONS = [180, 240, 300];
+const DOM_DURATIONS = [180, 300];
 const STAT_LABELS = [['range', 'Range'], ['damage', 'Damage'], ['rate', 'Fire rate'], ['mobility', 'Mobility'], ['paint', 'Ink coverage']];
 const KIND_LABEL = { shooter: 'Shooter', roller: 'Roller', charger: 'Charger', blaster: 'Blaster', dualies: 'Dualies', slosher: 'Slosher', splatling: 'Splatling', launcher: 'Launcher' };
 const STAT_ICONS = { range: GLYPHS.target, damage: GLYPHS.bolt, rate: GLYPHS.clock, mobility: GLYPHS.feather, paint: GLYPHS.drop };
@@ -888,8 +889,9 @@ export class Menus {
     const s = this._settings();
     const st = this._setup || (this._setup = { times: {} });
     const reduced = prefersReducedMotion();
-    const cur = st.mode || (s.lastMode === 'boss' ? 'boss' : 'turf');
+    const cur = st.mode || (s.lastMode === 'boss' || s.lastMode === 'dom' ? s.lastMode : 'turf');
     const bossLen = [180, 240, 300].includes(s.bossLength) ? s.bossLength : 240;
+    const domLen = DOM_DURATIONS.includes(s.domLength) ? s.domLength : 300;
     const MODES = [
       { id: 'turf', name: 'TURF WAR', kicker: 'CLASSIC', img: stageArt('tidewater', 'day'),
         blurb: 'Two teams of four, one harbour. Ink the most ground before the whistle.',
@@ -897,6 +899,9 @@ export class Menus {
       { id: 'boss', name: 'BOSS BATTLE', kicker: 'CO-OP', img: stageArt('kelpline', 'dusk'), badge: 'NEW!', beta: true,
         blurb: `Everyone's one squad against ${BOSS_NAME}, a giant crab in a rusted container. Sink it before time runs out!`,
         chips: [[GLYPHS.users, 'SQUAD OF 8'], [GLYPHS.clock, durLabel(bossLen)], [BOSS_GLYPH, '1 BOSS']] },
+      { id: 'dom', name: 'DOMINATION', kicker: 'OBJECTIVE', img: stageArt('beacon', 'day'), badge: 'NEW!',
+        blurb: 'Capture and hold zones A, B and C on the biggest stage yet. Every zone you hold scores — first to 250 wins.',
+        chips: [[GLYPHS.users, '4 V 4'], [GLYPHS.clock, durLabel(domLen)], [GLYPHS.map, '3 ZONES']] },
     ];
     let picking = false;
     const pick = (id, c) => {
@@ -916,9 +921,10 @@ export class Menus {
       img.src = m.img;
       const hero = m.id === 'boss'
         ? h('span', { class: 'iw-mode__hero is-boss', html: bossSilhouette() })
+        : m.id === 'dom' ? h('span', { class: 'iw-mode__hero is-dom' }, h('b', null, 'A'), h('b', { class: 'is-b' }, 'B'), h('b', null, 'C'))
         : h('span', { class: 'iw-mode__hero is-turf' },
           h('i', { class: 'iw-mode__squid is-a', html: SQUID }), h('b', { class: 'iw-mode__vs iw-display' }, 'VS'), h('i', { class: 'iw-mode__squid is-b', html: SQUID }));
-      const c = h('button', { class: `iw-mode iw-mode--${m.id} iw-in iw-in--pop`, style: { '--tilt': `${i ? 1.4 : -1.4}deg` } },
+      const c = h('button', { class: `iw-mode iw-mode--${m.id} iw-in iw-in--pop`, style: { '--tilt': `${[-1.4, 1.4, -1][i] ?? 0}deg` } },
         h('span', { class: 'iw-mode__art' }, img, h('i', { class: 'iw-mode__tint' }),
           h('span', { class: 'iw-mode__splat', html: splatSVG({ seed: 51 + i * 9, fill: 'var(--mc)', r: 58, arms: 9, drops: 5 }) }),
           hero, h('i', { class: 'iw-mode__glare' })),
@@ -953,9 +959,9 @@ export class Menus {
       this._prompts([[['←', '→'], 'DPad', 'Mode'], ['Enter', 'A', 'Select'], ['Esc', 'B', 'Back']]));
     el.dataset.mode = cur;
     setBg(cur);
-    const graph = new Map([[cards[0], { left: null, right: cards[1] }], [cards[1], { left: cards[0], right: null }]]);
+    const graph = new Map(cards.map((c, i) => [c, { left: cards[i - 1] || null, right: cards[i + 1] || null }]));
     return {
-      el, initial: cards[cur === 'boss' ? 1 : 0],
+      el, initial: cards[Math.max(0, MODES.findIndex((m) => m.id === cur))],
       onFocus: (f) => { if (f && f._mode && f._mode !== el.dataset.mode) { el.dataset.mode = f._mode; setBg(f._mode); } },
       onNav: (dir) => this._graphNav(graph, dir),
     };
@@ -988,17 +994,19 @@ export class Menus {
 
   _scr_setup() {
     const s = this._settings();
-    const maps = this._maps().filter((m) => !m.onlineOnly);   // (online-only stages live in the online lobby's picker)
+    const st = this._setup || (this._setup = { times: {} });
+    const boss = st.mode === 'boss', dom = st.mode === 'dom';
+    // (online-only stages live in the online lobby's picker) · Boss Battle skips noBoss stages · Domination needs zones
+    const maps = this._maps().filter((m) => !m.onlineOnly && (boss ? !m.noBoss : dom ? m.dom : true));
     const diffs = this._diffs();
     const byId = (id) => maps.find((m) => m.id === id);
-    const st = this._setup || (this._setup = { times: {} });
-    const boss = st.mode === 'boss';
-    const durations = boss ? BOSS_DURATIONS : (MATCH.durations || [90, 180]);
+    const durations = boss ? BOSS_DURATIONS : dom ? DOM_DURATIONS : (MATCH.durations || [90, 180]);
     const diffText = (v) => (boss ? BOSS_DIFF_INFO[v] : DIFF_INFO[v]?.text) || '';
     st.times = { ...(s.stageTimes || {}), ...(st.times || {}) };
     if (!byId(st.mapId)) st.mapId = byId(s.lastStage) ? s.lastStage : maps[0].id;
     st.difficulty = diffs[s.difficulty] ? s.difficulty : 'normal';
-    st.duration = boss ? (durations.includes(s.bossLength) ? s.bossLength : 240) : durations.includes(s.matchLength) ? s.matchLength : (MATCH.defaultDuration || 180);
+    st.duration = boss ? (durations.includes(s.bossLength) ? s.bossLength : 240) : dom ? (durations.includes(s.domLength) ? s.domLength : 300)
+      : durations.includes(s.matchLength) ? s.matchLength : (MATCH.defaultDuration || 180);
     const timeOf = (id) => this._stageTime(id);
     const reduced = prefersReducedMotion();
     this._preloadStages();
@@ -1164,7 +1172,7 @@ export class Menus {
     this._bind(diffRow, { id: 'difficulty', type: 'row', adjust: diffSeg.adjust, accept: diffSeg.cycle });
     const lOpts = durations.map((d) => [d, durLabel(d)]);
     const lenSeg = this._seg(lOpts, st.duration, (v) => {
-      st.duration = v; safeCall(() => this.api.setSettings && this.api.setSettings(boss ? { bossLength: v } : { matchLength: v })); updateStart();
+      st.duration = v; safeCall(() => this.api.setSettings && this.api.setSettings(boss ? { bossLength: v } : dom ? { domLength: v } : { matchLength: v })); updateStart();
     });
     const lenRow = h('div', { class: 'iw-setrow iw-setrow--stack' }, h('div', { class: 'iw-setrow__label' }, h('i', { html: GLYPHS.clock }), 'MATCH LENGTH'), lenSeg.el);
     this._bind(lenRow, { id: 'length', type: 'row', adjust: lenSeg.adjust, accept: lenSeg.cycle });
@@ -1259,6 +1267,7 @@ export class Menus {
     const el = h('div', { class: 'iw-screen iw-setup iw-ss' + (boss ? ' is-boss' : '') },
       bg, h('div', { class: 'iw-ss__scrim' }),
       boss ? this._header('BOSS BATTLE', { sub: `Pick a stage and the time of day · your squad of 8 vs ${BOSS_NAME}` })
+        : dom ? this._header('DOMINATION', { sub: 'Hold zones A · B · C · first to 250 · 4 v 4 against bots' })
         : this._header('TURF WAR', { sub: 'Pick a stage and the time of day · 4 v 4 against bots' }),
       h('div', { class: 'iw-ss__left' }, h('div', { class: 'iw-seclabel iw-in' }, h('i', { html: GLYPHS.map }), 'STAGES'), listEl, matchPanel),
       hero,
@@ -1307,9 +1316,9 @@ export class Menus {
     this._starting = true;
     const st = this._setup;
     const time = this._stageTime(st.mapId);
-    const mode = st.mode === 'boss' ? 'boss' : 'turf';
+    const mode = st.mode === 'boss' ? 'boss' : st.mode === 'dom' ? 'dom' : 'turf';
     const cfg = { mode, mapId: st.mapId, time, difficulty: st.difficulty, duration: st.duration };
-    safeCall(() => this.api.setSettings && this.api.setSettings({ difficulty: st.difficulty, [mode === 'boss' ? 'bossLength' : 'matchLength']: st.duration, lastStage: st.mapId, lastMode: mode, stageTimes: { ...(st.times || {}) } }));
+    safeCall(() => this.api.setSettings && this.api.setSettings({ difficulty: st.difficulty, [mode === 'boss' ? 'bossLength' : mode === 'dom' ? 'domLength' : 'matchLength']: st.duration, lastStage: st.mapId, lastMode: mode, stageTimes: { ...(st.times || {}) } }));
     if (this._scr) {
       this._scr.el.classList.add('is-launch');
       const b = this._scr.el.querySelector('.iw-btn--start');
@@ -3596,6 +3605,7 @@ export class Menus {
   _scr_results() {
     const d = this._results || this._demoResults();
     const boss = d.mode === 'boss';   // Boss Battle: VICTORY / DEFEAT vs HULLBREAKER, one squad ranked by damage
+    const dom = d.mode === 'dom', ds = d.domScore || [0, 0];   // Domination: the bar is the score share, numbers are points
     const colors = (d.colors || [TEAM_PALETTES[0].a, TEAM_PALETTES[0].b]).map((c) => toHex(c));
     const [pa, pb] = pct(...(d.percents || [50, 50]));
     const names = d.teamNames || TEAM_NAMES;
@@ -3626,7 +3636,7 @@ export class Menus {
     const head = h('div', { class: 'iw-res__head iw-in iw-in--pop' + (win ? ' is-win' : ' is-lose') },
       h('div', { class: 'iw-res__splat', html: splatSVG({ seed: win ? 9 : 14, cls: 'iw-fta', r: 60, arms: 10, drops: 4 }) }),
       titleEl,
-      h('div', { class: 'iw-res__metarow' }, h('div', { class: 'iw-res__meta' }, h('i', { html: GLYPHS.map }), `${d.mapName || (boss ? 'Boss Battle' : 'Turf War')} · ${boss ? 'Boss Battle' : 'Turf War'}`), tags,
+      h('div', { class: 'iw-res__metarow' }, h('div', { class: 'iw-res__meta' }, h('i', { html: GLYPHS.map }), `${d.mapName || (boss ? 'Boss Battle' : 'Turf War')} · ${boss ? 'Boss Battle' : dom ? 'Domination' : 'Turf War'}`), tags,
         boss ? h('span', { class: 'iw-beta iw-res__beta' }, 'PUBLIC BETA') : null),
       medalRow);
 
@@ -3815,8 +3825,8 @@ export class Menus {
       if (bossP) { bossP.set(k); return; }
       coverBar.style.setProperty('--ga', k.toFixed(4));
       const va = Math.round(pa * k * 10), vb = Math.round(pb * k * 10);
-      if (va !== lastA) { lastA = va; numA.textContent = (va / 10).toFixed(1) + '%'; }
-      if (vb !== lastB) { lastB = vb; numB.textContent = (vb / 10).toFixed(1) + '%'; }
+      if (va !== lastA) { lastA = va; numA.textContent = dom ? `${Math.round(ds[0] * k)} PTS` : (va / 10).toFixed(1) + '%'; }
+      if (vb !== lastB) { lastB = vb; numB.textContent = dom ? `${Math.round(ds[1] * k)} PTS` : (vb / 10).toFixed(1) + '%'; }
     };
     const landCover = (silent) => {
       if (coverDone) return;
