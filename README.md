@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://inkwave-aah.pages.dev"><b>▶ Play now</b></a> ·
+  <a href="https://sorzyy.github.io/inkwave-modif/"><b>▶ Play now</b></a> ·
   <a href="#controls">Controls</a> ·
   <a href="#playing-online">Online</a> ·
   <a href="#running-locally">Run locally</a> ·
