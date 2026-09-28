@@ -1,0 +1,162 @@
+/* INKWAVE — Armory overlay (src/ui/armory.js): battle pass, cases + opening reel, skin inventory. */
+.iwa {
+  position: fixed; inset: 0; z-index: 80; display: none; flex-direction: column;
+  font-family: 'Rubik', system-ui, sans-serif; font-weight: 500; color: #fff; user-select: none; -webkit-user-select: none;
+  --k: #15121c; --panel: rgba(22, 20, 34, .92); --line: rgba(255, 255, 255, .1); --gold: #e4ae39;
+}
+.iwa.is-open { display: flex; animation: iwa-in .28s ease-out; }
+@keyframes iwa-in { from { opacity: 0; transform: scale(1.02); } }
+.iwa-bg { position: absolute; inset: 0; z-index: -1; background:
+  radial-gradient(1200px 600px at 15% -10%, rgba(255, 138, 20, .22), transparent 60%),
+  radial-gradient(900px 600px at 110% 110%, rgba(47, 91, 255, .25), transparent 60%),
+  linear-gradient(180deg, #121020, #0b0a14); }
+.iwa kbd { font: 700 11px/1 'Rubik', sans-serif; background: #2a2738; border: 1px solid #45405a; border-bottom-width: 3px; border-radius: 5px; padding: 3px 6px; }
+.iwa h2, .iwa h3 { margin: 0; font-family: 'Titan One', 'Rubik', sans-serif; font-weight: 400; letter-spacing: .02em; }
+.iwa h3 { font-size: 14px; color: #bdb7d6; margin: 18px 0 8px; }
+.iwa-coin { width: 1.2em; height: 1.2em; vertical-align: -.25em; }
+
+/* ---- top bar */
+.iwa-top { display: flex; align-items: center; gap: 22px; padding: 14px 26px; border-bottom: 1px solid var(--line); background: rgba(0, 0, 0, .25); }
+.iwa-title { display: flex; flex-direction: column; line-height: 1; }
+.iwa-title b { font-family: 'Titan One', sans-serif; font-weight: 400; font-size: 30px; letter-spacing: .04em; color: #ffcf33; -webkit-text-stroke: 5px var(--k); paint-order: stroke fill; }
+.iwa-title small { font-size: 11px; letter-spacing: .14em; color: #9f99b8; margin-top: 4px; }
+.iwa-tabs { display: flex; gap: 6px; margin-left: 12px; }
+.iwa-tab { position: relative; font: 800 14px 'Rubik', sans-serif; letter-spacing: .08em; color: #c9c3e0; background: transparent; border: 0; padding: 10px 16px; border-radius: 10px; cursor: pointer; }
+.iwa-tab:hover { background: rgba(255, 255, 255, .07); color: #fff; }
+.iwa-tab.is-on { background: #fff; color: var(--k); }
+.iwa-dot { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; border-radius: 9px; background: #ff3b30; color: #fff; font: 800 11px/18px 'Rubik'; font-style: normal; text-align: center; padding: 0 4px; box-shadow: 0 0 0 2px #121020; }
+.iwa-coins { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 800; background: rgba(0, 0, 0, .35); padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line); }
+.iwa-close { width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .1); color: #fff; font-size: 18px; cursor: pointer; }
+.iwa-close:hover { background: #ff3b30; }
+.iwa-body { flex: 1; min-height: 0; overflow: auto; padding: 22px 26px; }
+.iwa-foot { display: flex; gap: 20px; align-items: center; padding: 10px 26px; font-size: 12px; color: #9f99b8; border-top: 1px solid var(--line); }
+.iwa-foot__note { margin-left: auto; }
+.iwa-hint { color: #9f99b8; font-size: 13px; margin: 10px 0; }
+.iwa-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+.iwa-empty { color: #9f99b8; padding: 40px; text-align: center; grid-column: 1 / -1; }
+
+/* ---- buttons */
+.iwa-btn { font: 800 14px 'Rubik', sans-serif; letter-spacing: .06em; color: #fff; background: #3a3550; border: 0; border-bottom: 4px solid #221f30; border-radius: 12px; padding: 11px 18px; cursor: pointer; transition: transform .08s, filter .15s; display: inline-flex; align-items: center; gap: 6px; }
+.iwa-btn:hover:not([disabled]) { filter: brightness(1.18); transform: translateY(-1px); }
+.iwa-btn:active:not([disabled]) { transform: translateY(2px); border-bottom-width: 2px; }
+.iwa-btn[disabled] { opacity: .4; cursor: default; }
+.iwa-btn--gold { background: linear-gradient(180deg, #ffd452, #f59e0b); color: var(--k); border-bottom-color: #a35f00; }
+.iwa-btn--ghost { background: transparent; border: 2px solid #4a4562; }
+.iwa-btn--sm { padding: 7px 12px; font-size: 12px; }
+.iwa-btn--lg { padding: 15px 28px; font-size: 18px; }
+
+/* ---- battle pass */
+.iwa-pass__head { display: flex; align-items: center; gap: 28px; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px 24px; }
+.iwa-pass__tier { display: flex; align-items: baseline; gap: 6px; }
+.iwa-pass__tier b { font-family: 'Titan One', sans-serif; font-weight: 400; font-size: 58px; line-height: 1; color: #ffcf33; -webkit-text-stroke: 6px var(--k); paint-order: stroke fill; }
+.iwa-pass__tier small { color: #9f99b8; font-weight: 800; letter-spacing: .1em; }
+.iwa-pass__bar { flex: 1; }
+.iwa-pass__barlabel { font-size: 12px; font-weight: 800; letter-spacing: .08em; color: #c9c3e0; margin-bottom: 8px; }
+.iwa-bar { height: 16px; border-radius: 8px; background: rgba(255, 255, 255, .08); overflow: hidden; border: 2px solid var(--k); }
+.iwa-bar i { display: block; height: 100%; background: linear-gradient(90deg, #ff8a14, #ffcf33); box-shadow: 0 0 18px rgba(255, 207, 51, .6); }
+.iwa-track { display: flex; gap: 12px; overflow-x: auto; padding: 14px 4px 18px; scroll-behavior: smooth; }
+.iwa-tc { flex: 0 0 150px; position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 10px; border-radius: 16px; background: var(--panel); border: 2px solid var(--line); opacity: .55; }
+.iwa-tc.is-reached { opacity: 1; }
+.iwa-tc.is-ready { border-color: #ffcf33; box-shadow: 0 0 24px rgba(255, 207, 51, .35); animation: iwa-pulse 1.6s ease-in-out infinite; }
+.iwa-tc.is-claimed { opacity: .75; }
+.iwa-tc.is-big { flex-basis: 190px; border-color: var(--rc, #ffcf33); background: linear-gradient(180deg, color-mix(in srgb, var(--rc, #ffcf33) 30%, #16142a), var(--panel)); }
+@keyframes iwa-pulse { 50% { box-shadow: 0 0 36px rgba(255, 207, 51, .6); } }
+.iwa-tc__n { font-family: 'Titan One', sans-serif; font-size: 22px; color: #fff; -webkit-text-stroke: 4px var(--k); paint-order: stroke fill; }
+.iwa-tc__art { width: 100%; height: 78px; display: grid; place-items: center; }
+.iwa-tc__art.is-coins svg { width: 54px; height: 54px; }
+.iwa-tc__art img { max-width: 100%; max-height: 100%; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .5)); }
+.iwa-tc__label { font-size: 12px; font-weight: 700; text-align: center; min-height: 30px; color: #e5e0f7; }
+.iwa-tc__state { font-size: 11px; font-weight: 800; color: #18d48c; letter-spacing: .06em; }
+.iwa-tc__state.is-lock { color: #8f89a8; }
+
+/* ---- case art (a chunky crate) */
+.iwa-case { --cc: #ff8a14; position: relative; width: 190px; height: 128px; border-radius: 16px; background: linear-gradient(160deg, color-mix(in srgb, var(--cc) 90%, #fff), color-mix(in srgb, var(--cc) 70%, #000)); border: 4px solid var(--k); box-shadow: 0 10px 0 rgba(0, 0, 0, .35), inset 0 -10px 0 rgba(0, 0, 0, .18); flex: none; }
+.iwa-case.is-sm { width: 86px; height: 58px; border-width: 3px; border-radius: 10px; box-shadow: 0 5px 0 rgba(0, 0, 0, .35); }
+.iwa-case__lid { position: absolute; left: -4px; right: -4px; top: -4px; height: 34%; border-radius: 14px 14px 6px 6px; background: rgba(0, 0, 0, .25); border-bottom: 4px solid var(--k); }
+.iwa-case__band { position: absolute; left: 44%; width: 12%; top: -4px; bottom: -4px; background: #ffcf33; border-left: 3px solid var(--k); border-right: 3px solid var(--k); }
+.iwa-case__name { position: absolute; left: 0; right: 0; bottom: 12%; text-align: center; font-family: 'Titan One', sans-serif; font-weight: 400; font-size: 20px; -webkit-text-stroke: 4px var(--k); paint-order: stroke fill; }
+.iwa-case.is-sm .iwa-case__name { font-size: 11px; -webkit-text-stroke: 3px var(--k); }
+.iwa-tc .iwa-case { margin-top: 8px; }
+.iwa-casegrid { display: grid; grid-template-columns: 280px 1fr; gap: 22px; align-items: start; }
+.iwa-cases { display: flex; flex-direction: column; gap: 10px; }
+.iwa-caserow { display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: 14px; background: var(--panel); border: 2px solid var(--line); color: #fff; cursor: pointer; text-align: left; font: inherit; }
+.iwa-caserow b { display: block; font-size: 15px; } .iwa-caserow small { color: #9f99b8; }
+.iwa-caserow.is-on { border-color: #ffcf33; }
+.iwa-casemain { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 22px; }
+.iwa-casehero { display: flex; gap: 28px; align-items: center; }
+.iwa-casehero h2 { font-size: 32px; }
+.iwa-casehero p { color: #bdb7d6; margin: 6px 0 0; }
+.iwa-odds { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: #bdb7d6; margin-bottom: 12px; }
+.iwa-odds i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--rc); margin-right: 6px; }
+
+/* ---- skin cards */
+.iwa-contents, .iwa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; }
+.iwa-card { position: relative; display: flex; flex-direction: column; gap: 3px; padding: 10px 10px 12px; border-radius: 12px; background: linear-gradient(180deg, #232036, #1a1829); border: 2px solid transparent; border-bottom: 5px solid var(--rc); color: #fff; font: inherit; text-align: left; overflow: hidden; }
+button.iwa-card { cursor: pointer; }
+button.iwa-card:hover { border-color: rgba(255, 255, 255, .2); border-bottom-color: var(--rc); transform: translateY(-2px); }
+.iwa-card.is-sel { border-color: #fff; border-bottom-color: var(--rc); }
+.iwa-card::before { content: ''; position: absolute; inset: auto 0 0 0; height: 60%; background: radial-gradient(80% 90% at 50% 100%, color-mix(in srgb, var(--rc) 35%, transparent), transparent); pointer-events: none; }
+.iwa-card__art { height: 84px; display: grid; place-items: center; position: relative; }
+.iwa-card__art img { max-width: 100%; max-height: 100%; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, .55)); }
+.iwa-card__art b, .iwa-rc__art b { font-size: 54px; color: var(--gold); text-shadow: 0 0 22px rgba(228, 174, 57, .8); }
+.iwa-card__weapon { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #9f99b8; font-weight: 700; position: relative; }
+.iwa-card__weapon svg { width: 20px; height: 20px; color: #ff8a14; }
+.iwa-card__name { font-size: 14px; font-weight: 800; position: relative; }
+.iwa-card__sub { font-size: 11px; color: #9f99b8; position: relative; }
+.iwa-card__eq { position: absolute; top: 8px; right: 8px; font: 800 10px 'Rubik'; font-style: normal; letter-spacing: .06em; background: #18d48c; color: var(--k); padding: 3px 7px; border-radius: 6px; }
+.iwa-card.is-equipped { box-shadow: inset 0 0 0 2px #18d48c; }
+.iwa-card.is-mystery { justify-content: center; }
+
+/* ---- inventory */
+.iwa-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.iwa-chip { display: inline-flex; align-items: center; gap: 6px; font: 700 13px 'Rubik'; color: #c9c3e0; background: rgba(255, 255, 255, .06); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+.iwa-chip i svg { width: 18px; height: 18px; color: #ff8a14; }
+.iwa-chip.is-on { background: #fff; color: var(--k); }
+.iwa-invgrid { display: grid; grid-template-columns: 1fr 380px; gap: 22px; align-items: start; }
+.iwa-detail { position: sticky; top: 0; background: var(--panel); border: 1px solid var(--line); border-top: 5px solid var(--rc, #4a4562); border-radius: 18px; padding: 18px; }
+.iwa-detail h2 { font-size: 20px; margin-top: 6px; }
+.iwa-inspect { display: block; width: 100%; height: 220px; cursor: grab; border-radius: 12px; background: radial-gradient(60% 70% at 50% 60%, color-mix(in srgb, var(--rc, #555) 35%, transparent), transparent); }
+.iwa-inspect:active { cursor: grabbing; }
+.iwa-reveal__meta { display: flex; gap: 14px; font-size: 13px; color: #bdb7d6; margin-top: 6px; flex-wrap: wrap; justify-content: inherit; }
+.iwa-wear { margin-top: 12px; }
+.iwa-wear__bar { position: relative; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #18d48c 0 7%, #7ed957 7% 15%, #f2e312 15% 38%, #ff8a14 38% 45%, #ff3b30 45%); }
+.iwa-wear__bar i { position: absolute; top: -5px; width: 3px; height: 18px; background: #fff; border-radius: 2px; box-shadow: 0 0 0 1px var(--k); transform: translateX(-1px); }
+.iwa-wear small { color: #9f99b8; font-size: 11px; }
+.iwa-st { margin-top: 10px; font-size: 13px; color: #ff8a14; font-weight: 700; }
+
+/* ---- modal + opening reel + reveal */
+.iwa-modal { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; background: rgba(6, 5, 12, .82); backdrop-filter: blur(6px); animation: iwa-in .2s ease-out; }
+.iwa-open { width: min(1100px, 94vw); text-align: center; }
+.iwa-open h2 { font-size: 26px; margin-bottom: 18px; }
+.iwa-reel__win { position: relative; height: 190px; overflow: hidden; border-radius: 14px; background: #0e0d18; border: 2px solid #2d2942; box-shadow: inset 0 0 60px rgba(0, 0, 0, .8); -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
+.iwa-reel__strip { position: absolute; left: 0; top: 14px; display: flex; will-change: transform; }
+.iwa-reel__marker { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; transform: translateX(-1px); background: #ffcf33; box-shadow: 0 0 14px #ffcf33, 0 0 3px #fff; z-index: 2; }
+.iwa-rc { flex: 0 0 164px; margin-right: 8px; height: 160px; border-radius: 10px; background: linear-gradient(180deg, #25223a, #1b1929); border-bottom: 6px solid var(--rc); display: flex; flex-direction: column; justify-content: space-between; padding: 8px; position: relative; overflow: hidden; }
+.iwa-rc::before { content: ''; position: absolute; inset: 0; background: radial-gradient(90% 70% at 50% 100%, color-mix(in srgb, var(--rc) 40%, transparent), transparent); }
+.iwa-rc__art { height: 100px; display: grid; place-items: center; position: relative; }
+.iwa-rc__art img { max-width: 100%; max-height: 100%; }
+.iwa-rc__name { font-size: 12px; font-weight: 700; text-align: left; position: relative; }
+.iwa-reveal { position: relative; width: min(760px, 92vw); text-align: center; padding: 26px; border-radius: 22px; background: linear-gradient(180deg, color-mix(in srgb, var(--rc) 28%, #16142a), #121020); border: 2px solid var(--rc); box-shadow: 0 0 80px color-mix(in srgb, var(--rc) 55%, transparent); overflow: hidden; animation: iwa-pop .45s cubic-bezier(.2, 1.4, .4, 1); }
+@keyframes iwa-pop { from { transform: scale(.7); opacity: 0; } }
+.iwa-reveal__rays { position: absolute; inset: -50%; background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--rc) 22%, transparent) 0 8deg, transparent 8deg 20deg); animation: iwa-spin 18s linear infinite; pointer-events: none; }
+@keyframes iwa-spin { to { transform: rotate(1turn); } }
+.iwa-reveal > *:not(.iwa-reveal__rays) { position: relative; }
+.iwa-reveal__kicker { letter-spacing: .2em; font-weight: 800; color: #bdb7d6; }
+.iwa-reveal .iwa-inspect { height: 300px; background: transparent; }
+.iwa-reveal h2 { font-size: 28px; }
+.iwa-reveal .iwa-row, .iwa-reveal .iwa-reveal__meta { justify-content: center; }
+.iwa-reveal.is-gold h2 { color: var(--gold); }
+.iwa-confirm { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 26px; max-width: 460px; text-align: center; }
+.iwa-confirm p { color: #bdb7d6; }
+.iwa-confirm .iwa-row { justify-content: center; }
+.iwa-toast { position: absolute; left: 50%; bottom: 60px; transform: translateX(-50%); z-index: 9; background: #18d48c; color: var(--k); font-weight: 800; padding: 10px 18px; border-radius: 12px; transition: opacity .4s, transform .4s; }
+.iwa-toast.is-out { opacity: 0; transform: translate(-50%, 10px); }
+
+@media (max-width: 900px) {
+  .iwa-top { flex-wrap: wrap; gap: 10px; padding: 10px 14px; }
+  .iwa-tabs { order: 3; width: 100%; margin: 0; }
+  .iwa-body { padding: 14px; }
+  .iwa-casegrid, .iwa-invgrid { grid-template-columns: 1fr; }
+  .iwa-casehero { flex-direction: column; align-items: flex-start; }
+  .iwa-foot__note { display: none; }
+}

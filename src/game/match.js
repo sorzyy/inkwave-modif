@@ -5,6 +5,7 @@ import { MATCH, PLAYER, WEAPON_ORDER, BOT_NAMES, TEAM_NAMES } from '../config.js
 import { Actor } from './actor.js';
 import { BotBrain } from './bots.js';
 import { randomStyle } from './character-style.js';
+import { withBotSkin } from './skins.js';
 import { PlayerController } from './player.js';
 import { BossMode, BOSS_MODE } from '../boss/bossMode.js';
 
@@ -62,7 +63,7 @@ export class Match {
           team, slot: s, weapon: weapons[s], isLocal, isBot: !isLocal,
           name: isLocal ? (o.playerName || 'You') : names[ni++ % names.length],
           // the local player wears their locker look; everyone else is rolled (outfit/eyes derive from the name seed)
-          style: isLocal && o.style ? { ...o.style } : randomStyle(), CharacterClass,
+          style: isLocal && o.style ? { ...o.style } : withBotSkin(randomStyle(), weapons[s]), CharacterClass,
         });
         G.scene.add(a.character.root);
         if ((!isLocal || o.autopilot) && !(noBots && !isLocal)) a.bot = new BotBrain(a, o.difficulty);
