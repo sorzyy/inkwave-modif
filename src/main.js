@@ -25,6 +25,8 @@ import { Minimap } from './game/minimap.js';
 import { Showcase } from './game/showcase.js';
 import { BOSS_MODE } from './boss/bossMode.js';
 import { Viewmodel } from './game/viewmodel.js';
+import { DOM } from './game/domination.js';
+import { DomHud } from './ui/dom-hud.js';
 import { armoryOf, syncStyle, grantMatchRewards, equippedItem, passTier } from './game/skins.js';
 
 const params = new URLSearchParams(location.search);
@@ -76,6 +78,7 @@ class Game {
         onEquip: () => { if (this.menus?.current === 'loadout') this.showcase.showLoadout(this.profile.weapon || 'shooter', G.teamColors[0], this.profile.style); },
       });
     } catch (e) { console.error('[inkwave] armory', e); this.armory = null; }
+    this.domHud = new DomHud(this.hud ? this.hud.el : this.uiRoot);   // Domination score race + zone markers
     // map diorama pins/finish live inside the HUD layer (under every other HUD element)
     try { const { DioramaOverlay } = await import('./ui/diorama.js'); this.diorama = new DioramaOverlay(this.hud ? this.hud.el : this.uiRoot); } catch (e) { console.error('[inkwave] diorama', e); this.diorama = null; }
     this.hud?.setVisible(false);
@@ -178,7 +181,7 @@ class Game {
     if (!params.has('autostart')) setTimeout(() => { if (G.mode === 'menu') this.showcase.preloadLobby?.(); }, 2500);
     this._applyAudioVolumes();
     requestAnimationFrame(() => this._loop());
-    if (params.has('autostart')) this.api.startMatch({ mapId: map.id, difficulty: params.get('difficulty') || this.settings.difficulty, duration: +params.get('autostart') || undefined, mode: params.get('mode') === 'boss' ? 'boss' : 'turf' });
+    if (params.has('autostart')) this.api.startMatch({ mapId: map.id, difficulty: params.get('difficulty') || this.settings.difficulty, duration: +params.get('autostart') || undefined, mode: params.get('mode') === 'boss' ? 'boss' : params.get('mode') === 'dom' ? 'dom' : 'turf' });
     this.bootMs = Math.round(performance.now() - t0);
     window.__inkwave = this; // debug/audit hook
     window.__G = G;
@@ -434,6 +437,23 @@ class Game {
         if (G.time - lastHitSnd > 0.06) { lastHitSnd = G.time; G.audio?.play('hit_marker', { volume: 0.6 }); }
       }
     });
+    // Domination call-outs (your team's view)
+    on('dom:capture', ({ zone, team, pos }) => {
+      const m = this.match; if (!m || m.attract) return;
+      const me = m.local ? m.local.team : 0, ours = team === me;
+      this.hud?.feed?.({ text: ours ? `We captured ${zone}` : `Enemy captured ${zone}`, color: G.teamHex[team], kind: ours ? 'ally' : 'death' });
+      G.audio?.play(ours ? 'zone_capture' : 'zone_lost', { volume: 0.8 });
+      // everyone of that team standing in the zone gets the capture (medals / XP)
+      for (const a of m.actors) if (a.team === team && m.dom?.inZone(m.dom.zones.find((z) => z.id === zone), a)) a.stats.caps = (a.stats.caps || 0) + 1;
+    });
+    on('dom:lost', ({ zone, team }) => {
+      const m = this.match; if (!m || m.attract) return;
+      if (team === (m.local ? m.local.team : 0)) { this.hud?.feed?.({ text: `We lost ${zone}!`, color: G.teamHex[team], kind: 'death' }); G.audio?.play('zone_lost', { volume: 0.6 }); }
+    });
+    on('dom:win', ({ team }) => {
+      const m = this.match; if (!m || m.attract) return;
+      this.hud?.feed?.({ text: `${team === (m.local ? m.local.team : 0) ? 'We' : 'They'} reached ${DOM.target} points!`, color: G.teamHex[team], kind: 'info' });
+    });
     on('damage', ({ victim, amount, attacker, source }) => {
       if (!this.match || this.match.attract || !victim.isLocal) return;
       let ang = null;
@@ -582,9 +602,9 @@ class Game {
       mapId: o.mapId === 'sunset' ? 'tidewater' : (o.mapId || this.mapDef.id),
       time: o.mapId === 'sunset' ? 'dusk' : (o.time || this.time || 'day'),
       difficulty: o.difficulty || this.settings.difficulty,
-      mode: o.mode === 'boss' ? 'boss' : 'turf',
+      mode: o.mode === 'boss' ? 'boss' : o.mode === 'dom' ? 'dom' : 'turf',
     };
-    opts.duration = o.duration || (opts.mode === 'boss' ? BOSS_MODE.duration : this.settings.matchLength || MATCH.defaultDuration);
+    opts.duration = o.duration || (opts.mode === 'boss' ? BOSS_MODE.duration : opts.mode === 'dom' ? (this.settings.domLength || DOM.duration) : this.settings.matchLength || MATCH.defaultDuration);
     this.lastMatchOpts = opts;
     G.audio?.init?.();
     this.input.requestLock();
@@ -834,6 +854,40 @@ class Game {
     if (G.netm && G.net.isHost) this._netEndT = setTimeout(() => { G.netm?.sendEnd(); this.netMatchEnd(); }, 12000);
   }
 
+  // Domination: no judge count (the score is the result) — straight to the podium
+  async _domResults() {
+    const m = this.match, R = m.result;
+    this.hud?.hideSplatted?.();
+    await new Promise((r) => setTimeout(r, 900));
+    if (this.match !== m) return;
+    const myTeam = m.local ? m.local.team : 0;
+    const won = R.winner === myTeam;
+    m.setState('results');
+    this.hud?.setVisible(false);
+    const local = m.local, p = this.profile;
+    const turf = Math.round(local.stats.turf);
+    const caps = local.stats.caps || 0;
+    const gained = Math.round((won ? PROGRESSION.xpWin : PROGRESSION.xpLose) + turf * PROGRESSION.xpPerTurfPoint + local.stats.splats * PROGRESSION.xpPerSplat + caps * 150);
+    const before = { level: p.level, xp: p.xp, toNext: PROGRESSION.xpForLevel(p.level) };
+    p.xp += gained; p.matches++; if (won) p.wins++; p.totalTurf += turf;
+    while (p.xp >= PROGRESSION.xpForLevel(p.level)) { p.xp -= PROGRESSION.xpForLevel(p.level); p.level++; }
+    this._passRewards(p, gained, won);
+    saveJSON('inkwave.profile', p);
+    const [s0, s1] = R.score, tot = Math.max(1, s0 + s1);
+    const data = {
+      mode: 'dom', win: won, percents: [(s0 / tot) * 100, (s1 / tot) * 100], domScore: [s0, s1], colors: [G.teamHex[0], G.teamHex[1]], teamNames: this.palette.names || TEAM_NAMES,
+      players: m.actors.map((a) => ({ name: a.name, team: a.team, weapon: a.weaponId, turf: Math.round(a.stats.turf), splats: a.stats.splats, deaths: a.stats.deaths, isSelf: a.isLocal, bot: !!a.isBot })),
+      xp: { gained, levelBefore: before.level, levelAfter: p.level, xpBefore: before.xp, xpAfter: p.xp, xpToNextBefore: before.toNext, xpToNextAfter: PROGRESSION.xpForLevel(p.level) },
+      mapName: this.mapDef.name,
+    };
+    const team = m.actors.filter((a) => a.team === myTeam);
+    this.showcase.showResults(myTeam, won, G.teamColors[myTeam], team.map((a) => ({ weapon: a.weaponId, style: a.character.style || { hair: a.slot % 4, skin: (a.slot * 3) % 4 }, name: a.name })));
+    this.menus?.showResults(data);
+    this.menus?.show('results');
+    G.audio?.play(won ? 'victory_fanfare' : 'defeat_jingle');
+    setTimeout(() => this._playMusic(won ? 'results_win' : 'results_lose'), 2600);
+  }
+
   // battle pass XP + coins for the match just played (the Armory shows what they unlock)
   _passRewards(p, gained, won) {
     const r = grantMatchRewards(p, gained, won);
@@ -846,6 +900,7 @@ class Game {
   async _judge() {
     const m = this.match;
     if (m.result?.mode === 'boss') return this._bossResults();
+    if (m.result?.mode === 'dom') return this._domResults();
     this.hud?.hideSplatted?.();
     this.rig.overview();
     this.hud?.setVisible(true);
@@ -1009,6 +1064,8 @@ class Game {
     ps.calls = G.renderer.info.render.calls; ps.tris = G.renderer.info.render.triangles;
     // HUD
     if (m && !m.attract && this.hud && (m.state === 'playing' || m.state === 'intro' || m.state === 'finish')) this._updateHud(dt);
+    if (m && m.dom && !m.attract && (m.state === 'playing' || m.state === 'finish')) this.domHud.update(m.dom, this.rig.gameCam || G.camera, m.local, G.teamHex);
+    else this.domHud.hide();
     this.menus?.update?.(dt);
     this.input.endFrame();
   }

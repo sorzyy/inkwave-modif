@@ -1,0 +1,46 @@
+/* INKWAVE — Domination HUD (src/ui/dom-hud.js): score race, A · B · C badges, status line, zone waypoints. */
+.iwd { position: absolute; inset: 0; pointer-events: none; z-index: 4; font-family: 'Rubik', system-ui, sans-serif; --k: #15121c; --tm: #ff8a14; --te: #2f5bff; --n: #9aa0ab; }
+.iwd[hidden] { display: none; }
+.iwd-bar { position: absolute; left: 50%; top: 86px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; }
+.iwd-score { position: relative; width: 170px; height: 26px; border-radius: 13px; background: rgba(21, 18, 28, .6); border: 3px solid var(--k); overflow: hidden; box-shadow: 0 3px 0 rgba(0, 0, 0, .3); }
+.iwd-score i { position: absolute; top: 0; bottom: 0; width: 0; transition: width .4s ease-out; }
+.iwd-score.is-a i { right: 0; background: var(--tm); }
+.iwd-score.is-b i { left: 0; background: var(--te); }
+.iwd-score b { position: absolute; top: 50%; transform: translateY(-50%); font: 400 17px 'Titan One', sans-serif; color: #fff; -webkit-text-stroke: 4px var(--k); paint-order: stroke fill; }
+.iwd-score.is-a b { left: 10px; } .iwd-score.is-b b { right: 10px; }
+.iwd-zones { display: flex; gap: 6px; }
+.iwd-badge, .iwd-mark { --p: 0; --c: var(--n); --r: var(--n); }
+.iwd-badge[data-own="m"], .iwd-mark[data-own="m"] { --c: var(--tm); }
+.iwd-badge[data-own="e"], .iwd-mark[data-own="e"] { --c: var(--te); }
+.iwd-badge[data-cap="m"], .iwd-mark[data-cap="m"] { --r: var(--tm); }
+.iwd-badge[data-cap="e"], .iwd-mark[data-cap="e"] { --r: var(--te); }
+.iwd-badge { position: relative; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+  background: conic-gradient(var(--r) calc(var(--p) * 360deg), rgba(21, 18, 28, .55) 0); padding: 4px; box-shadow: 0 0 0 3px var(--k), 0 3px 0 3px rgba(0, 0, 0, .3); }
+.iwd-badge span, .iwd-mark span { width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center; background: var(--c); border: 3px solid var(--k);
+  font: 400 19px 'Titan One', sans-serif; color: #fff; -webkit-text-stroke: 4px var(--k); paint-order: stroke fill; box-sizing: border-box; }
+.iwd-badge.is-contested span, .iwd-mark.is-contested span { animation: iwd-flash .35s steps(2) infinite; }
+@keyframes iwd-flash { 50% { background: #ff3b30; } }
+.iwd-status { position: absolute; left: 50%; top: 142px; transform: translateX(-50%) scale(.9); opacity: 0; transition: opacity .15s, transform .15s;
+  font: 400 20px 'Titan One', sans-serif; letter-spacing: .04em; color: #fff; -webkit-text-stroke: 5px var(--k); paint-order: stroke fill; white-space: nowrap; }
+.iwd-status.is-on { opacity: 1; transform: translateX(-50%) scale(1); }
+.iwd-status.is-cap { color: #ffcf33; } .iwd-status.is-contested { color: #ff5a4f; } .iwd-status.is-hold { color: #7dffb8; }
+.iwd-marks { position: absolute; inset: 0; }
+.iwd-mark { position: absolute; left: 0; top: 0; width: 34px; height: 34px; border-radius: 50%; padding: 3px; will-change: transform;
+  background: conic-gradient(var(--r) calc(var(--p) * 360deg), rgba(21, 18, 28, .45) 0); filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .5)); }
+.iwd-mark span { font-size: 15px; -webkit-text-stroke: 3px var(--k); border-width: 2px; }
+.iwd-mark small { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 2px; font: 800 11px 'Rubik'; color: #fff; text-shadow: 0 1px 2px #000, 0 0 3px #000; }
+.iwd-mark.is-off { opacity: .8; transform-origin: center; }
+.iwd-mark.is-here { opacity: 0; }
+
+/* ---- PLAY screen: a third mode card (Domination) */
+/* three 37u cards + gaps are ~119u: scale the row so it fits the 100u-wide screen */
+.iw-modesel__row:has(.iw-mode--dom) { gap: calc(var(--u) * 3); scale: .79; transform-origin: 50% 0; }
+.iw-mode--dom:not(.is-focus) .iw-mode__img { filter: brightness(.5) saturate(.7); }
+.iw-mode__hero.is-dom { display: flex; align-items: flex-end; gap: calc(var(--u) * 1.2); bottom: calc(var(--u) * 3); }
+.iw-mode__hero.is-dom b { display: grid; place-items: center; width: calc(var(--u) * 7.4); height: calc(var(--u) * 7.4); border-radius: 50%;
+  background: var(--a); border: calc(var(--u) * .6) solid var(--k); box-shadow: 0 calc(var(--u) * .6) 0 var(--k);
+  font: 400 calc(var(--u) * 4.2) 'Titan One', sans-serif; color: #fff; -webkit-text-stroke: calc(var(--u) * .7) var(--k); paint-order: stroke fill; }
+.iw-mode__hero.is-dom b.is-b { width: calc(var(--u) * 9.6); height: calc(var(--u) * 9.6); font-size: calc(var(--u) * 5.6); background: #fff; color: var(--b); margin-bottom: calc(var(--u) * 1.4); }
+.iw-mode__hero.is-dom b:last-child { background: var(--b); }
+.iw-mode.is-focus .iw-mode__hero.is-dom b.is-b { animation: iw-dom-bob 1.4s ease-in-out infinite; }
+@keyframes iw-dom-bob { 50% { translate: 0 calc(var(--u) * -.8); } }

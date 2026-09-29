@@ -1563,12 +1563,31 @@ def('launcher_reload', {
   },
 });
 
+// Domination: a bright rising three-note call when your team takes a zone, a falling one when it's taken from you
+def('zone_capture', {
+  gain: 0.5, max: 2, jitter: 0.01, reverb: 0.22,
+  build(v, p) {
+    [[0, 659], [0.09, 880], [0.18, 1319]].forEach(([t, f], i) => {
+      v.tone({ t, type: 'triangle', f: f * p, a: 0.004, d: i === 2 ? 0.42 : 0.14, peak: i === 2 ? 0.8 : 0.6 });
+      v.tone({ t, f: f * 2 * p, a: 0.004, d: 0.1, peak: 0.12 });
+    });
+    v.nz({ t: 0.18, ft: 'highpass', f: 5200, a: 0.02, d: 0.35, peak: 0.12 });                            // sparkle
+  },
+});
+def('zone_lost', {
+  gain: 0.48, max: 2, jitter: 0.01, reverb: 0.18,
+  build(v, p) {
+    [[0, 740], [0.11, 587], [0.22, 440]].forEach(([t, f], i) => v.tone({ t, type: 'square', f: f * p, f1: f * p * 0.97, sw: 0.1, a: 0.004, d: i === 2 ? 0.34 : 0.12, peak: 0.32 }));
+    v.tone({ t: 0.22, f: 110 * p, f1: 70 * p, sw: 0.3, a: 0.004, d: 0.35, peak: 0.5 });
+  },
+});
+
 /* ------------------------------------------------------------------------------------------------------------ */
 export const SFX_GROUPS = {
   UI: ['ui_hover', 'ui_click', 'ui_back', 'ui_confirm', 'ui_toggle', 'ui_slider', 'ui_error'],
   Weapons: ['shoot_shooter', 'shoot_blaster', 'blaster_pump', 'blaster_boom', 'charger_charge', 'charger_full', 'shoot_charger', 'roller_flick', 'roll',
     'shoot_dualies', 'dualies_roll', 'slosh_throw', 'slosh_land', 'splatling_spin', 'splatling_ready', 'shoot_splatling', 'splatling_wind',
-    'shoot_launcher', 'launcher_reload'],
+    'shoot_launcher', 'launcher_reload', 'zone_capture', 'zone_lost'],
   Ink: ['splat_small', 'splat_big', 'ink_hit_wall', 'bomb_throw', 'bomb_beep', 'bomb_explode'],
   Squid: ['squid_in', 'squid_out', 'swim', 'swim_splash', 'jump', 'land', 'climb', 'step_dry', 'step_ink', 'step_enemy', 'ink_drip'],
   World: ['gull', 'harbor_ambience', 'ferry_horn', 'halyard_clink'],

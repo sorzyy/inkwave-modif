@@ -56,6 +56,8 @@ const SHOTS = {
   // Cargo Terminal — over the gate-side shoulder of the Alpha base looking up the turned berth: K7's portal over the
   // Landing, the stacks either side of the truck lane, CORAL MAXIMA's bow (the layout's own `art` camera, in world space)
   cargo: { pos: [11.3, 26, -64.07], look: [-0.98, 4, 5.57], fov: 60, t: 40, palette: 'tangerine-cobalt' },
+  // Beacon Bay — from off the Alpha rail-yard corner looking NW over the fish market to the lighthouse plaza
+  beacon: { pos: [46, 20, -52], look: [-4, 3, 4], fov: 60, t: 40, palette: 'tangerine-cobalt' },
 };
 // A stage missing from the table gets a generic 3/4 aerial from its layout bounds (computed in the page).
 const FALLBACK = { pos: null, look: null, fov: 60, t: 40, palette: 'tangerine-cobalt' };

@@ -363,7 +363,35 @@ export class BotBrain {
     return true;
   }
 
+  // Domination: head for a zone — take the ones we don't hold, rush back to one being drained, spread the squad out
+  // (a node inside the zone, so bots circle and ink it while they hold it)
+  _pickZoneGoal(dom) {
+    const a = this.a, t = a.team;
+    let best = null, bs = -Infinity;
+    const mates = G.actors.filter((o) => o !== a && o.team === t && o.bot && o.alive);
+    for (const z of dom.zones) {
+      if (!z.nodes || !z.nodes.length) continue;
+      const d = Math.hypot(z.pos.x - a.pos.x, z.pos.z - a.pos.z);
+      let s = -d * 0.12 + Math.random() * 3;
+      if (z.owner !== t) s += z.owner < 0 ? 9 : 11;                 // take it
+      else if (z.n[1 - t] > 0 || Math.abs(z.cap) < 0.995) s += 13;   // ours and under attack
+      if (dom.inZone(z, a) && (z.owner !== t || Math.abs(z.cap) < 0.995)) s += 16;   // mid-capture: finish the job
+      const here = mates.filter((m) => m.bot && m.bot._zone === z.id).length;
+      s -= here * (z.owner === t ? 6 : 2.5);                        // don't all stack on one zone
+      if (s > bs) { bs = s; best = z; }
+    }
+    if (!best) return false;
+    this._zone = best.id;
+    const n = G.nav.nodes[best.nodes[(Math.random() * best.nodes.length) | 0]];
+    this.goalTimer = 3 + Math.random() * 3;
+    this._pathTo(_v3.set(n.x, n.y, n.z), 0.3);
+    return !!this.path;
+  }
+
   _pickPaintGoal() {
+    const dom = G.match?.dom;
+    if (dom && Math.random() < 0.85 && this._pickZoneGoal(dom)) return;
+    this._zone = null;
     const a = this.a, nav = G.nav;
     let best = -1, bs = -Infinity;
     const enemyPad = G.level.spawnPads[1 - a.team];

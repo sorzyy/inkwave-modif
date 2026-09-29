@@ -8,7 +8,7 @@
 
 // PATTERN (the shared surface slots) lives in mapkit.js, the kit the stage folders build with; re-exported here for the
 // original layouts and every existing importer
-import { PATTERN } from './mapkit.js';
+import { PATTERN, OCT } from './mapkit.js';
 import { LAYOUT as CARGO } from './stages/cargo/layout.js';
 export { PATTERN };
 
@@ -276,4 +276,94 @@ export const HALYARD = {
   },
 };
 
-export const MAP_LAYOUTS = { tidewater: TIDEWATER, kelpline: KELPLINE, halyard: HALYARD, cargo: CARGO };
+// ------------------------------------------------------------------------------------------------------------
+// Beacon Bay — the big one (72 x 124 m, about twice the other stages), built for Domination: three capture zones.
+//   • A / C "Fish Market": each team's near zone, a market square between two stall counters with a mural wall
+//     behind it; a raised overlook on the far flank looks down onto it
+//   • B "Lighthouse": the octagonal plaza at the centre (1.5 m up, ramps on all four faces) around the lighthouse
+//     tower — the zone everybody fights over, the tower breaks every sightline across it
+//   • right flank: the rail yard — container rows and a raised platform (2.2 m) that watches the lane to mid
+//   • spawn: a 3 m deck with three exits (side ramps + a wide front stair), a warehouse and a container stack behind
+// Zones (not mirrored — each is listed once, world space): A near Alpha, C its mirror near Bravo, B in the middle.
+const BB = {
+  pavers: '#d9cdb6', quay: '#cfc4b0', cream: '#ece4d4', spawn: '#eae6de', stone: '#c7c2b8', plaza: '#d8d0c0',
+  tower: '#f4f0e8', lamp: '#e05a4a', wood: '#c29a72', teal: '#5f9ea0', rust: '#c47a5e', navy: '#58668e',
+  mustard: '#d6ae52', lav: '#b3abd0', steel: '#98a0a6', brick: '#c98d74', planter: '#b9ad9a',
+};
+export const BEACON = {
+  id: 'beacon',
+  bounds: { minX: -36, maxX: 36, minZ: -62, maxZ: 62 },
+  spawnPads: [[0, 3.0, -57.4], [0, 3.0, 57.4]],
+  spawnBarrier: 4.2,
+  zones: [
+    { id: 'A', pos: [-14, 0, -27], r: 4.6 },
+    { id: 'B', pos: [0, 1.5, 0], r: 6.6 },
+    { id: 'C', pos: [14, 0, 27], r: 4.6 },
+  ],
+  single: [
+    // the lighthouse plaza (octagon, 1.5 m) and the tower on it
+    ...OCT(0, 0, 9, 0, 1.5, { color: BB.plaza, pattern: PATTERN.tiles, tag: 'plaza' }),
+    ...OCT(0, 0, 1.9, 1.5, 8.0, { color: BB.tower, pattern: PATTERN.render, tag: 'lighthouse' }),
+    ...OCT(0, 0, 2.5, 8.0, 8.6, { color: BB.lamp, pattern: PATTERN.metal, tag: 'lantern' }),
+  ],
+  half: [
+    // ---- ground, back wall, sea railings
+    B(-36, 36, -1.2, 0, -62, 0, { color: BB.pavers, pattern: PATTERN.pavers }),
+    B(-36, 36, 0, 4.2, -62, -61.4, { color: BB.cream, pattern: PATTERN.concrete, mural: [{ n: [0, 0, 1], id: 0 }] }),
+    B(-36, -35.4, 0, 1.05, -61.4, 0, { color: BB.steel, pattern: PATTERN.metal }),
+    B(35.4, 36, 0, 1.05, -61.4, 0, { color: BB.steel, pattern: PATTERN.metal }),
+
+    // ---- spawn deck: side ramps + a wide front stair
+    B(-10, 10, 0, 3.0, -61.4, -53, { color: BB.spawn, pattern: PATTERN.spawn }),
+    R([-17, 0, -57.2], [-10, 3.0, -57.2], 4, { color: BB.stone, pattern: PATTERN.hazard }),
+    R([17, 0, -57.2], [10, 3.0, -57.2], 4, { color: BB.stone, pattern: PATTERN.hazard }),
+    R([0, 0, -46.5], [0, 3.0, -53], 5, { color: BB.stone, pattern: PATTERN.stonestep }),
+    B(-10, -4, 3.0, 3.8, -53.6, -53, { color: BB.cream, pattern: PATTERN.plain }),
+    B(4, 10, 3.0, 3.8, -53.6, -53, { color: BB.cream, pattern: PATTERN.plain }),
+
+    // ---- base: warehouse (left), container stack (right), crates
+    B(-34, -24, 0, 4.5, -58, -47, { color: BB.brick, pattern: PATTERN.brick, mural: [{ n: [1, 0, 0], id: 2 }, { n: [0, 0, 1], id: 2 }] }),
+    B(24, 34, 0, 2.6, -52, -49.56, { color: BB.rust, pattern: PATTERN.container, mural: [{ n: [0, 0, 1], id: 3 }] }),
+    B(25, 31.1, 2.6, 5.2, -52, -49.56, { color: BB.navy, pattern: PATTERN.container, mural: [{ n: [0, 0, 1], id: 3 }] }),
+    B(-6, -4.6, 0, 1.4, -44, -42.6, { color: BB.wood, pattern: PATTERN.wood }),
+    B(4.6, 6, 0, 1.4, -41, -39.6, { color: BB.wood, pattern: PATTERN.wood }),
+    B(4.6, 6, 1.4, 2.8, -41, -39.6, { color: BB.wood, pattern: PATTERN.wood }),
+
+    // ---- zone A: the fish market (stall counters either side, mural wall behind, crates in front)
+    B(-21.5, -20, 0, 1.1, -31, -23, { color: BB.wood, pattern: PATTERN.wood, tag: 'stall' }),
+    B(-8, -6.5, 0, 1.1, -31, -23, { color: BB.wood, pattern: PATTERN.wood, tag: 'stall' }),
+    B(-19, -9, 0, 2.6, -34.2, -33.4, { color: BB.cream, pattern: PATTERN.concrete, mural: [{ n: [0, 0, 1], id: 1 }, { n: [0, 0, -1], id: 1 }] }),
+    B(-15.2, -13.8, 0, 1.4, -19.6, -18.2, { color: BB.wood, pattern: PATTERN.wood }),
+    B(-13.8, -12.4, 0, 1.4, -19.6, -18.2, { color: BB.wood, pattern: PATTERN.wood }),
+    // overlook on the far flank (ramp from the base side) with a crate for cover on top
+    B(-35.4, -27, 0, 2.4, -38, -26, { color: BB.lav, pattern: PATTERN.tiles }),
+    R([-31, 0, -43], [-31, 2.4, -38], 3.6, { color: BB.stone, pattern: PATTERN.hazard }),
+    B(-30, -28.6, 2.4, 3.6, -30, -28.6, { color: BB.wood, pattern: PATTERN.wood }),
+
+    // ---- right flank: the rail yard
+    B(10, 12.44, 0, 2.6, -40, -33.9, { color: BB.teal, pattern: PATTERN.container, mural: [{ n: [-1, 0, 0], id: 3 }, { n: [1, 0, 0], id: 3 }] }),
+    B(17, 23.1, 0, 2.6, -31, -28.56, { color: BB.mustard, pattern: PATTERN.container, mural: [{ n: [0, 0, 1], id: 3 }, { n: [0, 0, -1], id: 3 }] }),
+    B(17.5, 23.1, 2.6, 5.2, -31, -28.56, { color: BB.rust, pattern: PATTERN.container }),
+    B(27, 35.4, 0, 2.2, -40, -24, { color: BB.quay, pattern: PATTERN.pavers }),
+    R([31, 0, -45], [31, 2.2, -40], 3.6, { color: BB.stone, pattern: PATTERN.hazard }),
+    B(35.4, 36, 2.2, 3.15, -40, -24, { color: BB.steel, pattern: PATTERN.metal }),
+    B(6, 12, 0, 1.0, -24, -23.4, { color: BB.stone, pattern: PATTERN.plain }),
+
+    // ---- mid: ramps onto the plaza (front + side faces), cover on the approaches
+    R([0, 0, -15], [0, 1.5, -8.3], 5, { color: BB.stone, pattern: PATTERN.stonestep }),
+    R([-15, 0, 0], [-8.3, 1.5, 0], 5, { color: BB.stone, pattern: PATTERN.stonestep }),
+    B(-22, -20.8, 0, 2.6, -16, -8, { color: BB.cream, pattern: PATTERN.concrete, mural: [{ n: [1, 0, 0], id: 1 }, { n: [-1, 0, 0], id: 1 }] }),
+    B(14, 18, 0, 1.0, -13, -12.4, { color: BB.stone, pattern: PATTERN.plain }),
+    B(20, 21.4, 0, 1.4, -6, -4.6, { color: BB.wood, pattern: PATTERN.wood }),
+    B(20, 21.4, 1.4, 2.8, -6, -4.6, { color: BB.wood, pattern: PATTERN.wood }),
+    B(21.4, 22.8, 0, 1.4, -6, -4.6, { color: BB.wood, pattern: PATTERN.wood }),
+    B(-30, -26, 0, 0.9, -10, -6, { color: BB.planter, pattern: PATTERN.planter, tag: 'planter' }),
+  ],
+  decor: {
+    lamps: [[-35, -44], [-35, -20], [35, -12], [-12, -61], [12, -61], [-9.5, -9.5]],
+    palms: [[-28, -8]],
+    flags: [[-8.5, 3.0, -60.6], [8.5, 3.0, -60.6]],
+  },
+};
+
+export const MAP_LAYOUTS = { tidewater: TIDEWATER, kelpline: KELPLINE, halyard: HALYARD, cargo: CARGO, beacon: BEACON };

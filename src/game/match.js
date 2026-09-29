@@ -8,6 +8,7 @@ import { randomStyle } from './character-style.js';
 import { withBotSkin } from './skins.js';
 import { PlayerController } from './player.js';
 import { BossMode, BOSS_MODE } from '../boss/bossMode.js';
+import { DomMode, DOM } from './domination.js';
 
 const _v = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
 
@@ -15,8 +16,9 @@ export class Match {
   constructor(opts) {
     this.opts = opts;          // { duration, difficulty, attract, playerName, weapon, CharacterClass, input, rig, mode }
     this.attract = !!opts.attract;
-    this.mode = opts.mode === 'boss' && !this.attract ? 'boss' : 'turf';   // boss: one squad (team 0) vs HULLBREAKER
-    this.duration = opts.duration || (this.mode === 'boss' ? BOSS_MODE.duration : MATCH.defaultDuration);
+    // boss: one squad (team 0) vs HULLBREAKER · dom: Domination (hold zones A / B / C, domination.js)
+    this.mode = this.attract ? 'turf' : opts.mode === 'boss' ? 'boss' : opts.mode === 'dom' ? 'dom' : 'turf';
+    this.duration = opts.duration || (this.mode === 'boss' ? BOSS_MODE.duration : this.mode === 'dom' ? DOM.duration : MATCH.defaultDuration);
     this.time = this.duration;
     this.state = 'init';
     this.stateT = 0;
@@ -87,6 +89,7 @@ export class Match {
       on('splatted', (e) => this._onSplatted(e)),
     ];
     if (this.mode === 'boss') { this.bossMode = new BossMode(this); this.boss = this.bossMode.boss; }
+    if (this.mode === 'dom') this.dom = new DomMode(this);
   }
 
   // Online: the host's roster — who owns which squidkid (players their own, the host the bots).
@@ -115,6 +118,7 @@ export class Match {
     }
     this.unsubs = [on('splatted', (e) => this._onSplatted(e))];
     if (this.mode === 'boss') { this.bossMode = new BossMode(this); this.boss = this.bossMode.boss; }
+    if (this.mode === 'dom') this.dom = new DomMode(this);
   }
 
   start() {
@@ -128,6 +132,7 @@ export class Match {
 
   dispose() {
     this.bossMode?.dispose(); this.bossMode = null; this.boss = null;
+    this.dom?.dispose(); this.dom = null;
     for (const a of this.actors) { G.scene.remove(a.character.root); a.weaponRunner.reset(); a.character.dispose?.(); }
     this.unsubs?.forEach((u) => u());
     G.actors = [];
@@ -191,6 +196,7 @@ export class Match {
     const nm = G.netm;
     for (const a of this.actors) { if (a.remote && nm) nm.applyRemote(a, dt); else a.update(dt); }
     this.bossMode?.update(dt);
+    this.dom?.update(dt);
     // soft push between actors
     for (let i = 0; i < this.actors.length; i++) for (let j = i + 1; j < this.actors.length; j++) {
       const a = this.actors[i], b = this.actors[j];
@@ -217,6 +223,12 @@ export class Match {
   _judge() {
     if (this.bossMode) {
       this.result = this.bossMode.result();
+      G.netm?.sendResult(this.result);
+      this.setState('judge');
+      return;
+    }
+    if (this.dom) {
+      this.result = this.dom.result();
       G.netm?.sendResult(this.result);
       this.setState('judge');
       return;

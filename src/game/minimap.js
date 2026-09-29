@@ -354,6 +354,24 @@ export class Minimap {
       c.beginPath(); c.arc(tc.x, tc.y, r * 0.45, 0, TAU); c.fillStyle = hex[team]; c.fill();
       c.lineWidth = 2.5; c.strokeStyle = '#15121c'; c.stroke();
     }
+    // Domination zones: owner-coloured disc, capture arc, the letter
+    const dom = G.match && G.match.dom;
+    if (dom) {
+      for (const z of dom.zones) {
+        this.toCanvas(z.pos.x, z.pos.z, tc);
+        const r = Math.max(7, z.r * s);
+        c.beginPath(); c.arc(tc.x, tc.y, r, 0, TAU);
+        c.fillStyle = z.owner >= 0 ? hex[z.owner] : '#9aa0ab'; c.globalAlpha = 0.55; c.fill(); c.globalAlpha = 1;
+        c.lineWidth = 3; c.strokeStyle = '#15121c'; c.stroke();
+        if (Math.abs(z.cap) > 0.01 && Math.abs(z.cap) < 0.999) {
+          c.beginPath(); c.arc(tc.x, tc.y, r + 2, -Math.PI / 2, -Math.PI / 2 + Math.abs(z.cap) * TAU);
+          c.lineWidth = 3; c.strokeStyle = hex[z.cap > 0 ? 0 : 1]; c.stroke();
+        }
+        c.font = `${Math.round(r * 1.25)}px "Titan One", sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.lineWidth = 3; c.strokeStyle = '#15121c'; c.strokeText(z.id, tc.x, tc.y + 1);
+        c.fillStyle = z.contested && Math.sin(t * 14) > 0 ? '#ff5a4f' : '#ffffff'; c.fillText(z.id, tc.x, tc.y + 1);
+      }
+    }
     // transient effects
     for (let i = fxList.length - 1; i >= 0; i--) {
       const f = fxList[i];
